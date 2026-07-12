@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVRack — AV Gear Organizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161921;
+    --surface2: #1e2230;
+    --border: #2a2f42;
+    --text: #e8eaf0;
+    --muted: #6b728a;
+    --accent: #4af0c4;
+    --cat-video: #3b82f6;
+    --cat-audio: #f59e0b;
+    --cat-storage: #8b5cf6;
+    --cat-lighting: #f97316;
+    --cat-power: #ef4444;
+    --cat-accessories: #10b981;
+    --cat-other: #6b7280;
+    --cat-instruments: #ec4899;
+  }
+  html.light {
+    --bg: #f0f2f7;
+    --surface: #ffffff;
+    --surface2: #e8ebf2;
+    --border: #d0d5e8;
+    --text: #1a1d2e;
+    --muted: #7a82a0;
+    --accent: #0d9e7e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* HEADER */
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center;
+    justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+  .logo span { color: var(--text); }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .theme-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; cursor: pointer; font-size: 15px; display: flex; align-items: center; gap: 5px; color: var(--muted); }
+  .theme-toggle:hover { color: var(--text); border-color: var(--text); }
+
+  /* LAYOUT */
+  .app { display: flex; height: calc(100vh - 56px); }
+  .sidebar { width: 210px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+  .sidebar-section { padding: 16px 12px 8px; }
+  .sidebar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 0 8px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(74,240,196,0.08); color: var(--accent); }
+  html.light .nav-item.active { background: rgba(13,158,126,0.10); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-item .count { margin-left: auto; font-size: 11px; background: var(--surface2); padding: 1px 7px; border-radius: 99px; color: var(--muted); }
+  .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* TOOLBAR */
+  .toolbar { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--surface); }
+  .toolbar-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
+  .search { width: 160px; }
+  .ml-auto { margin-left: auto; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: #0d0f14; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+  .btn-danger { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .btn-accent-ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-accent-ghost:hover { background: rgba(74,240,196,0.08); }
+
+  /* INPUTS */
+  input[type="text"], input[type="number"], select, textarea {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 7px 12px; font-family: 'Barlow', sans-serif;
+    font-size: 13px; outline: none; transition: border 0.15s;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  /* STATS BAR */
+  .stats-bar { display: flex; gap: 14px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; }
+  .stat-val { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-divider { width: 1px; background: var(--border); }
+
+  /* CONTENT */
+  .content { flex: 1; overflow-y: auto; padding: 16px; }
+
+  /* GEAR GRID */
+  .gear-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .gear-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    cursor: grab; user-select: none;
+  }
+  .gear-card:active { cursor: grabbing; }
+  .gear-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+  html.light .gear-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+  .gear-card.dragging { opacity: 0.45; transform: scale(0.97); border-style: dashed; }
+  .gear-card.in-list { border-color: var(--accent); opacity: 0.7; }
+  .gear-card.in-list .gear-card-bar { opacity: 0.5; }
+  .gear-card-bar { height: 3px; }
+  .gear-card-body { padding: 12px 14px 10px; }
+  .gear-card-name { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.3px; margin-bottom: 2px; }
+  .gear-card-brand { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .gear-card-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .tag { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .gear-card-footer { padding: 7px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .gear-card-qty { font-size: 11px; color: var(--muted); }
+  .gear-card-qty strong { color: var(--text); }
+  .card-actions { display: flex; gap: 4px; }
+  .icon-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 13px; padding: 3px 5px; border-radius: 4px; transition: all 0.15s; }
+  .icon-btn:hover { color: var(--text); background: var(--surface2); }
+  .icon-btn.quick-add:hover { color: var(--accent); }
+
+  /* DRAG HINT */
+  .drag-hint { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+
+  /* ── PACK LIST SPLIT VIEW ── */
+  .lists-split { display: flex; flex: 1; overflow: hidden; }
+
+  /* LEFT PANEL — list selector + gear inventory */
+  .lists-left { display: flex; flex-direction: column; flex: 1; min-width: 0; border-right: 1px solid var(--border); overflow: hidden; }
+  .lists-left-toolbar { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: var(--surface); }
+  .lists-left-content { flex: 1; overflow-y: auto; padding: 12px; }
+
+  /* Compact gear row for list builder */
+  .gear-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface);
+    margin-bottom: 6px; cursor: grab; transition: all 0.15s; user-select: none;
+  }
+  .gear-row:hover { border-color: var(--accent); background: var(--surface2); }
+  .gear-row:active { cursor: grabbing; }
+  .gear-row.dragging { opacity: 0.4; }
+  .gear-row.in-list { opacity: 0.55; border-style: dashed; }
+  .gear-row-name { font-weight: 600; font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gear-row-brand { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .drag-handle { color: var(--border); font-size: 16px; cursor: grab; padding: 0 2px; flex-shrink: 0; }
+  .gear-row:hover .drag-handle { color: var(--muted); }
+
+  /* RIGHT PANEL — active list */
+  .lists-right { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); overflow: hidden; }
+  .lists-right-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .list-tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .list-tabs::-webkit-scrollbar { display: none; }
+  .list-tab {
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.3px; white-space: nowrap; color: var(--muted);
+    border: 1px solid transparent; transition: all 0.15s; flex-shrink: 0;
+  }
+  .list-tab:hover { background: var(--surface2); color: var(--text); }
+  .list-tab.active { background: rgba(74,240,196,0.1); color: var(--accent); border-color: rgba(74,240,196,0.3); }
+  html.light .list-tab.active { background: rgba(13,158,126,0.1); border-color: rgba(13,158,126,0.3); }
+
+  .list-detail { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .list-detail-header { padding: 12px 16px 8px; border-bottom: 1px solid var(--border); }
+  .list-detail-name { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; }
+  .list-detail-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* DROP ZONE */
+  .drop-zone {
+    flex: 1; overflow-y: auto; padding: 10px;
+    border: 2px dashed transparent; border-radius: 8px; margin: 8px; transition: all 0.2s;
+    min-height: 80px;
+  }
+  .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(74,240,196,0.04);
+  }
+  html.light .drop-zone.drag-over { background: rgba(13,158,126,0.04); }
+  .drop-zone-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 120px; color: var(--muted); font-size: 13px; text-align: center; gap: 8px;
+  }
+  .drop-zone-empty .dz-icon { font-size: 28px; opacity: 0.5; }
+  .drop-zone-hint { font-size: 11px; opacity: 0.6; }
+
+  /* LIST ITEMS */
+  .pack-list-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 7px; margin-bottom: 4px;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 13px; transition: background 0.1s;
+  }
+  .pack-list-item:hover { border-color: var(--border); }
+  .pack-checkbox { width: 15px; height: 15px; border-radius: 4px; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; transition: all 0.15s; }
+  .pack-checkbox.checked { background: var(--accent); border-color: var(--accent); color: #0d0f14; }
+  .pack-item-name { flex: 1; font-weight: 500; }
+  .pack-item-name.checked { text-decoration: line-through; color: var(--muted); }
+  .pack-item-qty { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .remove-item { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; border-radius: 3px; transition: all 0.1s; }
+  .remove-item:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+
+  /* SUB-LIST */
+  .sub-list-toggle { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 11px; padding: 2px 5px; border-radius: 3px; transition: all 0.1s; white-space: nowrap; display: flex; align-items: center; gap: 3px; }
+  .sub-list-toggle:hover { color: var(--accent); background: rgba(74,240,196,0.08); }
+  .sub-list-toggle .arrow { display: inline-block; transition: transform 0.18s; font-size: 9px; }
+  .sub-list-toggle.open .arrow { transform: rotate(90deg); }
+  .sub-list-body { margin: 4px 0 6px 32px; display: none; }
+  .sub-list-body.open { display: block; }
+  .sub-list-row { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 5px; font-size: 12px; color: var(--muted); border-left: 2px solid var(--border); margin-bottom: 3px; background: transparent; transition: background 0.1s; }
+  .sub-list-row:hover { background: var(--surface2); }
+  .sub-list-row .pack-checkbox { width: 13px; height: 13px; font-size: 8px; flex-shrink: 0; }
+  .sub-list-row .pack-checkbox.checked { background: var(--accent); border-color: var(--accent); }
+  .sub-list-name { flex: 1; }
+  .sub-list-name.checked { text-decoration: line-through; color: var(--border); }
+  .sub-list-badge { font-size: 10px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; white-space: nowrap; }
+  .subitem-editor { display: flex; flex-direction: column; gap: 4px; }
+  .subitem-row { display: flex; align-items: center; gap: 6px; }
+  .subitem-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 5px; padding: 6px 10px; font-family: 'Barlow', sans-serif; font-size: 13px; outline: none; }
+  .subitem-input:focus { border-color: var(--accent); }
+  .subitem-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 15px; padding: 2px 5px; border-radius: 3px; flex-shrink: 0; }
+  .subitem-del:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+  .add-subitem-btn { display: flex; align-items: center; gap: 5px; background: none; border: 1px dashed var(--border); color: var(--muted); border-radius: 5px; padding: 5px 10px; font-size: 12px; cursor: pointer; width: 100%; transition: all 0.15s; }
+  .add-subitem-btn:hover { border-color: var(--accent); color: var(--accent); }
+  /* LIST FOOTER */
+  .list-detail-footer { padding: 10px 16px; border-top: 1px solid var(--border); }
+  .progress-ring { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .progress-bar-outer { height: 4px; background: var(--surface2); border-radius: 2px; flex: 1; }
+  .progress-bar-inner { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.3s; }
+  .list-footer-actions { display: flex; gap: 6px; }
+
+  /* NO LIST SELECTED */
+  .no-list-selected { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 24px; gap: 10px; }
+  .no-list-selected .nls-icon { font-size: 36px; opacity: 0.4; }
+  .no-list-selected h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: var(--text); }
+  .no-list-selected p { font-size: 13px; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
+  .empty-icon { font-size: 44px; margin-bottom: 12px; }
+  .empty h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: var(--text); margin-bottom: 5px; }
+  .empty p { font-size: 13px; }
+
+  /* MODALS */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: 0.5px; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 19px; cursor: pointer; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 13px; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 9px 12px; font-family: 'Barlow', sans-serif; font-size: 14px; outline: none; width: 100%; transition: border 0.15s; }
+  .form-input:focus { border-color: var(--accent); }
+  textarea.form-input { resize: vertical; min-height: 64px; }
+
+  /* CAT COLORS */
+  .c-video { background: rgba(59,130,246,0.12); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); }
+  .c-audio { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); }
+  .c-storage { background: rgba(139,92,246,0.12); color: #8b5cf6; border: 1px solid rgba(139,92,246,0.25); }
+  .c-lighting { background: rgba(249,115,22,0.12); color: #f97316; border: 1px solid rgba(249,115,22,0.25); }
+  .c-power { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+  .c-accessories { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+  .c-other { background: rgba(107,114,128,0.12); color: #9ca3af; border: 1px solid rgba(107,114,128,0.25); }
+  .c-instruments { background: rgba(236,72,153,0.12); color: #ec4899; border: 1px solid rgba(236,72,153,0.25); }
+  .bar-video { background: #3b82f6; } .bar-audio { background: #f59e0b; } .bar-storage { background: #8b5cf6; }
+  .bar-lighting { background: #f97316; } .bar-power { background: #ef4444; } .bar-accessories { background: #10b981; } .bar-other { background: #6b7280; } .bar-instruments { background: #ec4899; }
+  .dot-video { background: #3b82f6; } .dot-audio { background: #f59e0b; } .dot-storage { background: #8b5cf6; }
+  .dot-lighting { background: #f97316; } .dot-power { background: #ef4444; } .dot-accessories { background: #10b981; } .dot-other { background: #6b7280; } .dot-instruments { background: #ec4899; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 999; box-shadow: 0 8px 24px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s; opacity: 0; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--accent); }
+  .toast.error { border-color: #ef4444; }
+
+  /* IMPORT/EXPORT */
+  .import-drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 24px 18px; text-align: center; cursor: pointer; transition: all 0.2s; color: var(--muted); font-size: 13px; }
+  .import-drop-zone:hover, .import-drop-zone.dragover { border-color: var(--accent); background: rgba(74,240,196,0.04); color: var(--text); }
+  .import-drop-zone .drop-icon { font-size: 28px; margin-bottom: 6px; }
+  .import-mode-row { display: flex; gap: 8px; }
+  .import-mode-btn { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 12px; font-family: 'Barlow', sans-serif; transition: all 0.15s; text-align: center; }
+  .import-mode-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(74,240,196,0.06); }
+  #importFileInput { display: none; }
+
+  /* LIST PICKER */
+  .list-picker-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); margin-bottom: 6px; transition: all 0.15s; }
+  .list-picker-item:hover { background: var(--surface2); border-color: var(--accent); }
+  .list-picker-name { font-weight: 500; font-size: 14px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* SIDEBAR COLLAPSE (desktop) */
+  .sidebar.collapsed { display: none; }
+
+  /* ── BOTTOM TAB BAR (mobile only) ── */
+  .bottom-tabs {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 120;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-tabs-inner {
+    display: flex; align-items: stretch; height: 58px;
+  }
+  .tab-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; cursor: pointer; border: none; background: none;
+    color: var(--muted); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;
+    padding: 0 4px; -webkit-tap-highlight-color: transparent;
+    position: relative; transition: color 0.15s;
+  }
+  .tab-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.15s; }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active svg { stroke: var(--accent); }
+  .tab-btn.active::after {
+    content: ''; position: absolute; top: 0; left: 20%; right: 20%;
+    height: 2px; background: var(--accent); border-radius: 0 0 2px 2px;
+  }
+  /* Center FAB */
+  .tab-btn.tab-add { flex: 1.2; }
+  .tab-add-fab {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 10px rgba(74,240,196,0.45);
+    margin-bottom: 2px; transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .tab-btn.tab-add:active .tab-add-fab { transform: scale(0.93); box-shadow: 0 1px 6px rgba(74,240,196,0.3); }
+  html.light .tab-add-fab { box-shadow: 0 3px 10px rgba(13,158,126,0.35); }
+  .tab-add-fab svg { width: 24px; height: 24px; stroke: #0d0f14; stroke-width: 2.2; }
+  .tab-btn.tab-add span { font-size: 10px; color: var(--accent); }
+
+  /* ── GEAR PICKER SHEET (mobile pack lists) ── */
+  .gear-sheet-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300;
+  }
+  .gear-sheet-overlay.open { display: block; }
+  .gear-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 301;
+    background: var(--surface); border-radius: 18px 18px 0 0;
+    border-top: 1px solid var(--border);
+    max-height: 75vh; display: flex; flex-direction: column;
+    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .gear-sheet.open { transform: translateY(0); }
+  .gear-sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; flex-shrink: 0; }
+  .gear-sheet-header { padding: 12px 16px 8px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .gear-sheet-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: 0.5px; }
+  .gear-sheet-close { background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; padding: 4px; }
+  .gear-sheet-search { padding: 0 16px 10px; flex-shrink: 0; }
+  .gear-sheet-search input { width: 100%; }
+  .gear-sheet-list { overflow-y: auto; padding: 0 10px 16px; }
+
+  /* ── MOBILE OVERRIDES ── */
+  @media (max-width: 700px) {
+    /* Hide desktop chrome */
+    .sidebar { display: none !important; }
+    .stats-bar { display: none; }
+    .theme-toggle span#themeLabel { display: none; }
+    .header-actions .btn-ghost { display: none; }
+
+    /* Header compact */
+    header { padding: 0 12px; }
+    .logo { font-size: 19px; }
+
+    /* Main fills to bottom tab bar */
+    .app { height: calc(100vh - 56px); }
+    .main { padding-bottom: 60px; }
+
+    /* Show bottom tabs */
+    .bottom-tabs { display: flex; }
+
+    /* Gear grid: single column */
+    .gear-grid { grid-template-columns: 1fr; gap: 8px; }
+    .content { padding: 10px; }
+
+    /* Touch-friendly cards */
+    .gear-card { cursor: default; }
+    .gear-card:active { transform: scale(0.98); }
+    .gear-card-body { padding: 12px 14px 10px; }
+    .icon-btn { padding: 8px; font-size: 16px; }
+    .gear-card-footer { padding: 8px 14px; }
+
+    /* Toolbar compact */
+    .toolbar { padding: 8px 10px; }
+    .toolbar-title { font-size: 15px; }
+    .search { width: 100%; }
+    .toolbar { flex-wrap: nowrap; }
+
+    /* Pack list view: full width single column */
+    .lists-split > div:last-child { flex-direction: column !important; }
+    .lists-left { display: none !important; }
+    .lists-right { width: 100% !important; border: none; }
+    .list-detail-footer { padding: 8px 12px; }
+    .list-footer-actions { flex-wrap: wrap; gap: 5px; }
+
+    /* List tabs scrollable */
+    .list-tabs { gap: 6px; }
+    .list-tab { padding: 7px 12px; font-size: 13px; }
+
+    /* Pack list items larger touch targets */
+    .pack-list-item { padding: 11px 10px; }
+    .pack-checkbox { width: 20px; height: 20px; font-size: 11px; }
+
+    /* Gear rows in sheet */
+    .gear-row { padding: 12px 14px; }
+
+    /* Modals full-screen on mobile */
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal { border-radius: 18px 18px 0 0; max-height: 92vh; max-width: 100%; }
+
+    /* FAB — mobile add gear inside tabs, no floating */
+    .fab { display: none; }
+
+    /* Show mobile-only elements */
+    .mobile-only { display: flex !important; }
+
+    /* Pack list empty drop zone message */
+    .drop-zone-hint::before { content: 'Tap + Add Gear below to add items'; }
+    .drop-zone-empty > div:not(.dz-icon):not(:last-child) { display: none; }
+  }
+
+  /* SMOOTH TRANSITIONS */
+  body, header, .sidebar, .gear-card, .modal, .stats-bar, .toolbar, .nav-item, input, select, textarea, .btn, .gear-row, .lists-right, .list-tab, .bottom-tabs, .tab-btn, .gear-sheet {
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">AV<span>Rack</span></div>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙 <span id="themeLabel">Dark</span></button>
+    <button class="btn btn-ghost btn-sm data-btn" onclick="openModal('dataManager')" title="Import / Export data">⬆⬇ Data</button>
+    <button class="btn btn-ghost btn-sm menu-btn" onclick="toggleMobileSidebar()">☰</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('addGear')">+ Add Gear</button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Views</div>
+      <div class="nav-item active" onclick="setView('all', this)"><span class="icon">📦</span> All Gear <span class="count" id="cnt-all">0</span></div>
+      <div class="nav-item" onclick="setView('lists', this)"><span class="icon">🗒️</span> Pack Lists <span class="count" id="cnt-lists">0</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Categories</div>
+      <div class="nav-item" onclick="setView('video', this)"><span class="cat-dot dot-video"></span> Video/Photo <span class="count" id="cnt-video">0</span></div>
+      <div class="nav-item" onclick="setView('audio', this)"><span class="cat-dot dot-audio"></span> Audio <span class="count" id="cnt-audio">0</span></div>
+      <div class="nav-item" onclick="setView('storage', this)"><span class="cat-dot dot-storage"></span> Storage <span class="count" id="cnt-storage">0</span></div>
+      <div class="nav-item" onclick="setView('lighting', this)"><span class="cat-dot dot-lighting"></span> Lighting <span class="count" id="cnt-lighting">0</span></div>
+      <div class="nav-item" onclick="setView('power', this)"><span class="cat-dot dot-power"></span> Power <span class="count" id="cnt-power">0</span></div>
+      <div class="nav-item" onclick="setView('accessories', this)"><span class="cat-dot dot-accessories"></span> Accessories <span class="count" id="cnt-accessories">0</span></div>
+      <div class="nav-item" onclick="setView('instruments', this)"><span class="cat-dot dot-instruments"></span> Instruments <span class="count" id="cnt-instruments">0</span></div>
+      <div class="nav-item" onclick="setView('other', this)"><span class="cat-dot dot-other"></span> Other <span class="count" id="cnt-other">0</span></div>
+    </div>
+    <div class="sidebar-section" style="margin-top:auto;padding-top:16px;">
+      <button class="btn btn-ghost" style="width:100%" onclick="openModal('newList')">+ New Pack List</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="toolbar" id="mainToolbar">
+      <span class="toolbar-title" id="viewTitle">All Gear</span>
+      <input type="text" class="search form-input" placeholder="🔍 Search…" oninput="renderView()" id="searchInput">
+      <select class="form-input" onchange="renderView()" id="sortSelect" style="width:auto">
+        <option value="name">Name</option>
+        <option value="category">Category</option>
+        <option value="qty">Qty</option>
+      </select>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="openModal('newList')">+ New List</button>
+    </div>
+    <div class="content" id="mainContent"></div>
+  </div>
+</div>
+
+<!-- ADD GEAR MODAL -->
+<div class="modal-overlay" id="modal-addGear">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="gearModalTitle">Add Gear Item</span>
+      <button class="modal-close" onclick="closeModal('addGear')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Item Name *</label>
+        <input type="text" class="form-input" id="gi-name" placeholder="e.g. Sony FX3">
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Brand</label><input type="text" class="form-input" id="gi-brand" placeholder="Sony"></div>
+        <div class="form-group"><label class="form-label">Model</label><input type="text" class="form-input" id="gi-model" placeholder="FX3"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category *</label>
+          <select class="form-input" id="gi-cat">
+            <option value="video">📹 Video/Photo</option>
+            <option value="audio">🎙️ Audio</option>
+            <option value="storage">💾 Storage</option>
+            <option value="lighting">💡 Lighting</option>
+            <option value="power">🔋 Power</option>
+            <option value="accessories">🔧 Accessories</option>
+            <option value="instruments">🎸 Instruments</option>
+            <option value="other">📦 Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Quantity</label><input type="number" class="form-input" id="gi-qty" value="1" min="1"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Serial / Asset #</label><input type="text" class="form-input" id="gi-serial" placeholder="Optional"></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="gi-notes" placeholder="Cables included, condition, etc."></textarea></div>
+      <div class="form-group">
+        <label class="form-label">Sub-items / Components</label>
+        <div class="subitem-editor" id="subitemEditor"></div>
+        <button type="button" class="add-subitem-btn" onclick="addSubitemField()">＋ Add sub-item</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addGear')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGear()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW LIST MODAL -->
+<div class="modal-overlay" id="modal-newList">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">New Pack List</span>
+      <button class="modal-close" onclick="closeModal('newList')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">List Name *</label><input type="text" class="form-input" id="pl-name" placeholder="e.g. Wedding Shoot — June 14"></div>
+      <div class="form-group"><label class="form-label">Event / Notes</label><textarea class="form-input" id="pl-notes" placeholder="Location, client, notes…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('newList')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveList()">Create List</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TO LIST (fallback modal for mobile) -->
+<div class="modal-overlay" id="modal-addToList">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add to Pack List</span>
+      <button class="modal-close" onclick="closeModal('addToList')">✕</button>
+    </div>
+    <div class="modal-body" id="listPickerBody"></div>
+  </div>
+</div>
+
+<!-- DATA MANAGER MODAL -->
+<div class="modal-overlay" id="modal-dataManager">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Import / Export Data</span>
+      <button class="modal-close" onclick="closeModal('dataManager')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Export Data</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Download all your gear and pack lists as a JSON backup file.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="exportData()">⬇ Export JSON</button>
+        <button class="btn btn-ghost" onclick="copyDataToClipboard()">📋 Copy to Clipboard</button>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Export All Gear — Inventory Sheet</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Generate a print-ready inventory list of all your gear, grouped by category.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="printGearInventory()">🖨️ Print Inventory</button>
+        <button class="btn btn-ghost" onclick="exportGearInventoryHTML()">⬇ Download HTML</button>
+        <button class="btn btn-ghost" onclick="exportGearCSV()">⬇ Export CSV</button>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Export Packing Checklist</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Generate a print-ready checklist sheet for a pack list.</p>
+      <div id="checklistPickerArea"><div style="font-size:13px;color:var(--muted);font-style:italic;" id="noListsMsg"></div><div id="checklistListPicker" style="display:flex;flex-direction:column;gap:6px;"></div></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Import</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Load a previously exported JSON file.</p>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Import mode:</div>
+        <div class="import-mode-row">
+          <div class="import-mode-btn selected" id="modeReplace" onclick="selectMode('replace')">🔄 Replace All<br><span style="font-size:10px;opacity:0.7">Overwrites existing data</span></div>
+          <div class="import-mode-btn" id="modeMerge" onclick="selectMode('merge')">➕ Merge<br><span style="font-size:10px;opacity:0.7">Adds without duplicating</span></div>
+        </div>
+      </div>
+      <div class="import-drop-zone" id="dropZone" onclick="document.getElementById('importFileInput').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
+        <div class="drop-icon">📂</div>
+        <div>Drop <strong>avrack-backup.json</strong> here or click to browse</div>
+      </div>
+      <input type="file" id="importFileInput" accept=".json,application/json" onchange="handleFileSelect(event)">
+      <div style="margin-top:10px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Or paste JSON directly:</div>
+        <textarea class="form-input" id="pasteImport" style="min-height:70px;font-family:monospace;font-size:11px;" placeholder='{"gear":[...],"lists":[]}'></textarea>
+        <button class="btn btn-ghost" style="margin-top:6px;width:100%" onclick="importFromPaste()">Import from Pasted Text</button>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('dataManager')">Close</button></div>
+  </div>
+</div>
+
+<!-- BOTTOM TAB BAR (mobile) -->
+<nav class="bottom-tabs" id="bottomTabs">
+  <div class="bottom-tabs-inner">
+
+    <button class="tab-btn active" id="tab-all" onclick="mobileTab('all')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Inventory</span>
+    </button>
+
+    <button class="tab-btn" id="tab-lists" onclick="mobileTab('lists')">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+      <span>Pack Lists</span>
+    </button>
+
+    <button class="tab-btn tab-add" onclick="openModal('addGear')">
+      <div class="tab-add-fab">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <span>Add Gear</span>
+    </button>
+
+    <button class="tab-btn" id="tab-cat" onclick="mobileTab('cat')">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="19" cy="15" r="4"/><path d="m21.5 17.5-1.5-1.5"/></svg>
+      <span>Browse</span>
+    </button>
+
+    <button class="tab-btn" id="tab-data" onclick="openModal('dataManager')">
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+      <span>Data</span>
+    </button>
+
+  </div>
+</nav>
+
+<!-- CATEGORY BROWSER SHEET (mobile) -->
+<div class="gear-sheet-overlay" id="catSheetOverlay" onclick="closeCatSheet()"></div>
+<div class="gear-sheet" id="catSheet">
+  <div class="gear-sheet-handle"></div>
+  <div class="gear-sheet-header">
+    <span class="gear-sheet-title">Browse by Category</span>
+    <button class="gear-sheet-close" onclick="closeCatSheet()">✕</button>
+  </div>
+  <div class="gear-sheet-list" id="catSheetList"></div>
+</div>
+
+<!-- GEAR PICKER SHEET (mobile pack lists) -->
+<div class="gear-sheet-overlay" id="gearSheetOverlay" onclick="closeGearSheet()"></div>
+<div class="gear-sheet" id="gearSheet">
+  <div class="gear-sheet-handle"></div>
+  <div class="gear-sheet-header">
+    <span class="gear-sheet-title">Add to List</span>
+    <button class="gear-sheet-close" onclick="closeGearSheet()">✕</button>
+  </div>
+  <div class="gear-sheet-search">
+    <input type="text" class="form-input" id="gearSheetSearch" placeholder="🔍 Search gear…" oninput="renderGearSheet()">
+  </div>
+  <div class="gear-sheet-list" id="gearSheetList"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let gear = [], lists = [], currentView = 'all', editingGearId = null, pendingAddGearId = null;
+let activeListId = null;
+let importMode = 'replace';
+let isDark = true;
+let dragGearId = null;
+
+const CATS = ['video','audio','storage','lighting','power','accessories','instruments','other'];
+const CAT_ICONS = { video:'📹', audio:'🎙️', storage:'💾', lighting:'💡', power:'🔋', accessories:'🔧', instruments:'🎸', other:'📦' };
+const CAT_LABELS = { video:'Video/Photo', audio:'Audio', storage:'Storage', lighting:'Lighting', power:'Power', accessories:'Accessories', instruments:'Instruments', other:'Other' };
+const CAT_COLORS_HEX = { video:'#3b82f6', audio:'#f59e0b', storage:'#8b5cf6', lighting:'#f97316', power:'#ef4444', accessories:'#10b981', instruments:'#ec4899', other:'#6b7280' };
+
+function uid() { return Math.random().toString(36).slice(2,10); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── PERSIST ──
+function save() { try { localStorage.setItem('avr_gear', JSON.stringify(gear)); localStorage.setItem('avr_lists', JSON.stringify(lists)); } catch(e){} }
+function load() {
+  try { gear = JSON.parse(localStorage.getItem('avr_gear') || '[]'); lists = JSON.parse(localStorage.getItem('avr_lists') || '[]'); } catch(e){}
+  if (!gear.length && !lists.length) seedDefaults();
+}
+function seedDefaults() {
+  gear = [
+    { id: uid(), name: 'Sony FX3', brand: 'Sony', model: 'FX3', category: 'video', qty: 1, serial: 'SN-001', notes: 'Full frame cinema camera' },
+    { id: uid(), name: 'Ronin RS3 Pro', brand: 'DJI', model: 'RS3 Pro', category: 'video', qty: 1, serial: '', notes: 'Gimbal stabilizer' },
+    { id: uid(), name: 'Sennheiser MKH 416', brand: 'Sennheiser', model: 'MKH 416', category: 'audio', qty: 2, serial: '', notes: 'Shotgun mic' },
+    { id: uid(), name: 'Zoom F6 Recorder', brand: 'Zoom', model: 'F6', category: 'audio', qty: 1, serial: '', notes: '6-track field recorder' },
+    { id: uid(), name: 'Samsung T7 2TB', brand: 'Samsung', model: 'T7', category: 'storage', qty: 3, serial: '', notes: 'NVMe portable SSD' },
+    { id: uid(), name: 'Aputure 600D Pro', brand: 'Aputure', model: '600D Pro', category: 'lighting', qty: 2, serial: '', notes: 'LED COB with Fresnel' },
+    { id: uid(), name: 'Anton Bauer Gold Mount', brand: 'Anton Bauer', model: 'Gold Mount', category: 'power', qty: 4, serial: '', notes: '190Wh V-Mount' },
+  ];
+}
+
+// ── THEME ──
+function applyTheme(dark) {
+  isDark = dark;
+  document.documentElement.classList.toggle('light', !dark);
+  document.getElementById('themeToggle').innerHTML = (dark ? '🌙 ' : '☀️ ') + '<span id="themeLabel">' + (dark ? 'Dark' : 'Light') + '</span>';
+  try { localStorage.setItem('avr_theme', dark ? 'dark' : 'light'); } catch(e){}
+}
+function toggleTheme() { applyTheme(!isDark); }
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+  t.className = 'toast ' + type;
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── MODALS ──
+function openModal(id) {
+  if (id === 'addGear' && !editingGearId) {
+    ['gi-name','gi-brand','gi-model','gi-serial','gi-notes'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('gi-cat').value = 'video';
+    document.getElementById('gi-qty').value = 1;
+    document.getElementById('gearModalTitle').textContent = 'Add Gear Item';
+    renderSubitemEditor([]);
+  }
+  if (id === 'dataManager') populateChecklistPicker();
+  document.getElementById('modal-' + id).classList.add('open');
+  setTimeout(() => { const f = document.querySelector('#modal-' + id + ' .form-input'); if (f) f.focus(); }, 100);
+}
+function closeModal(id) {
+  document.getElementById('modal-' + id).classList.remove('open');
+  if (id === 'addGear') editingGearId = null;
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── GEAR CRUD ──
+function saveGear() {
+  const name = document.getElementById('gi-name').value.trim();
+  if (!name) { document.getElementById('gi-name').focus(); return; }
+  const subitems = Array.from(document.querySelectorAll('.subitem-input'))
+    .map(i => i.value.trim()).filter(Boolean).map(t => ({ id: uid(), text: t }));
+  const item = {
+    id: editingGearId || uid(), name,
+    brand: document.getElementById('gi-brand').value.trim(),
+    model: document.getElementById('gi-model').value.trim(),
+    category: document.getElementById('gi-cat').value,
+    qty: parseInt(document.getElementById('gi-qty').value) || 1,
+    serial: document.getElementById('gi-serial').value.trim(),
+    notes: document.getElementById('gi-notes').value.trim(),
+    subitems,
+  };
+  if (editingGearId) { const idx = gear.findIndex(g => g.id === editingGearId); if (idx >= 0) gear[idx] = item; }
+  else gear.push(item);
+  save(); closeModal('addGear'); renderAll();
+}
+function editGear(id) {
+  const g = gear.find(x => x.id === id); if (!g) return;
+  editingGearId = id;
+  document.getElementById('gi-name').value = g.name;
+  document.getElementById('gi-brand').value = g.brand;
+  document.getElementById('gi-model').value = g.model;
+  document.getElementById('gi-cat').value = g.category;
+  document.getElementById('gi-qty').value = g.qty;
+  document.getElementById('gi-serial').value = g.serial;
+  document.getElementById('gi-notes').value = g.notes;
+  document.getElementById('gearModalTitle').textContent = 'Edit Gear Item';
+  renderSubitemEditor(g.subitems || []);
+  openModal('addGear');
+}
+// ── SUBITEM EDITOR ──
+function renderSubitemEditor(items) {
+  const editor = document.getElementById('subitemEditor');
+  if (!editor) return;
+  editor.innerHTML = items.map((si, i) => `
+    <div class="subitem-row">
+      <input class="subitem-input" type="text" placeholder="e.g. Battery, lens cap, cable…" value="${esc(si.text || si)}" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubitemField();}">
+      <button class="subitem-del" type="button" onclick="removeSubitemField(this)" title="Remove">✕</button>
+    </div>`).join('');
+}
+function addSubitemField() {
+  const editor = document.getElementById('subitemEditor');
+  const row = document.createElement('div');
+  row.className = 'subitem-row';
+  row.innerHTML = `<input class="subitem-input" type="text" placeholder="e.g. Battery, lens cap, cable…" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubitemField();}"><button class="subitem-del" type="button" onclick="removeSubitemField(this)" title="Remove">✕</button>`;
+  editor.appendChild(row);
+  row.querySelector('input').focus();
+}
+function removeSubitemField(btn) {
+  btn.closest('.subitem-row').remove();
+}
+
+function deleteGear(id) {
+  if (!confirm('Remove this item from your inventory?')) return;
+  gear = gear.filter(g => g.id !== id);
+  lists.forEach(l => { l.items = l.items.filter(i => i.gearId !== id); });
+  save(); renderAll();
+}
+
+// ── PACK LIST CRUD ──
+function saveList() {
+  const name = document.getElementById('pl-name').value.trim();
+  if (!name) return;
+  const nl = { id: uid(), name, notes: document.getElementById('pl-notes').value.trim(), items: [], created: Date.now() };
+  lists.push(nl);
+  activeListId = nl.id;
+  save(); closeModal('newList');
+  document.getElementById('pl-name').value = '';
+  document.getElementById('pl-notes').value = '';
+  setView('lists', document.querySelector('.nav-item:nth-child(2)'));
+}
+function deleteList(id) {
+  if (!confirm('Delete this pack list?')) return;
+  lists = lists.filter(l => l.id !== id);
+  if (activeListId === id) activeListId = lists.length ? lists[0].id : null;
+  save(); renderAll();
+}
+function toggleCheck(listId, gearId) {
+  const l = lists.find(x => x.id === listId); if (!l) return;
+  const i = l.items.find(x => x.gearId === gearId); if (i) i.checked = !i.checked;
+  save(); renderListsView();
+}
+function toggleSubList(gearId) {
+  const toggle = document.getElementById('st-' + gearId);
+  const body = document.getElementById('sb-' + gearId);
+  if (!toggle || !body) return;
+  const open = body.classList.toggle('open');
+  toggle.classList.toggle('open', open);
+}
+function toggleSubCheck(listId, gearId, subId) {
+  const l = lists.find(x => x.id === listId); if (!l) return;
+  const li = l.items.find(x => x.gearId === gearId); if (!li) return;
+  if (!li.subChecked) li.subChecked = {};
+  li.subChecked[subId] = !li.subChecked[subId];
+  save(); renderListsView();
+}
+
+function removeFromList(listId, gearId) {
+  const l = lists.find(x => x.id === listId); if (!l) return;
+  l.items = l.items.filter(x => x.gearId !== gearId);
+  save(); renderListsView();
+}
+function addGearToActiveList(gearId) {
+  if (!activeListId) { showToast('Select or create a pack list first', 'error'); return; }
+  const l = lists.find(x => x.id === activeListId);
+  const g = gear.find(x => x.id === gearId);
+  if (!l || !g) return;
+  if (l.items.find(i => i.gearId === gearId)) { showToast('Already in this list'); return; }
+  l.items.push({ gearId, qty: g.qty, checked: false });
+  save(); renderListsView();
+}
+
+// ── PROMPT ADD (mobile fallback) ──
+function promptAddToList(gearId) {
+  pendingAddGearId = gearId;
+  const body = document.getElementById('listPickerBody');
+  if (!lists.length) {
+    body.innerHTML = '<p style="color:var(--muted);font-size:14px;">No pack lists yet.</p><div style="margin-top:10px"><button class="btn btn-primary" onclick="closeModal(\'addToList\');openModal(\'newList\')">+ New List</button></div>';
+  } else {
+    body.innerHTML = lists.map(l => `
+      <div class="list-picker-item" onclick="doAddToList('${l.id}')">
+        <span style="font-size:18px">🗒️</span>
+        <div><div class="list-picker-name">${esc(l.name)}</div><div style="font-size:11px;color:var(--muted)">${l.items.length} items</div></div>
+      </div>`).join('');
+  }
+  openModal('addToList');
+}
+function doAddToList(listId) {
+  const l = lists.find(x => x.id === listId);
+  const g = gear.find(x => x.id === pendingAddGearId);
+  if (!l || !g) return;
+  if (l.items.find(i => i.gearId === g.id)) { closeModal('addToList'); showToast('Already in this list'); return; }
+  l.items.push({ gearId: g.id, qty: g.qty, checked: false });
+  activeListId = listId;
+  save(); closeModal('addToList'); renderAll();
+}
+
+// ── DRAG AND DROP ──
+function onGearDragStart(e, gearId) {
+  dragGearId = gearId;
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', gearId);
+  setTimeout(() => { const el = document.querySelector(`[data-gear-id="${gearId}"]`); if (el) el.classList.add('dragging'); }, 0);
+}
+function onGearDragEnd(e) {
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  dragGearId = null;
+}
+function onDropZoneDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; document.getElementById('dropZoneInner').classList.add('drag-over'); }
+function onDropZoneDragLeave(e) { if (!document.getElementById('dropZoneInner').contains(e.relatedTarget)) document.getElementById('dropZoneInner').classList.remove('drag-over'); }
+function onDropZoneDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZoneInner').classList.remove('drag-over');
+  const gid = e.dataTransfer.getData('text/plain') || dragGearId;
+  if (gid) addGearToActiveList(gid);
+}
+
+// ── VIEW SWITCHING ──
+function setView(view, el) {
+  currentView = view;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = { all:'All Gear', lists:'Pack Lists', video:'Video/Photo Gear', audio:'Audio Gear', storage:'Storage', lighting:'Lighting', power:'Power', accessories:'Accessories', instruments:'Instruments', other:'Other' };
+  document.getElementById('viewTitle').textContent = titles[view] || view;
+  // Sync bottom tabs
+  ['all','lists','cat','data'].forEach(t => {
+    const btn = document.getElementById('tab-' + t);
+    if (btn) btn.classList.remove('active');
+  });
+  if (view === 'all') { const b = document.getElementById('tab-all'); if (b) b.classList.add('active'); }
+  else if (view === 'lists') { const b = document.getElementById('tab-lists'); if (b) b.classList.add('active'); }
+  else { const b = document.getElementById('tab-cat'); if (b) b.classList.add('active'); }
+  renderView();
+}
+function renderView() {
+  if (currentView === 'lists') renderListsView();
+  else renderGearView();
+}
+
+// ── GEAR VIEW ──
+function renderGearView() {
+  const mainContent = document.getElementById('mainContent');
+  const toolbar = document.getElementById('mainToolbar');
+  toolbar.style.display = 'flex';
+  mainContent.style.padding = '16px';
+
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const sort = document.getElementById('sortSelect').value;
+  let items = gear.filter(g => {
+    if (currentView !== 'all' && g.category !== currentView) return false;
+    if (search && !g.name.toLowerCase().includes(search) && !g.brand.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  if (sort === 'name') items.sort((a,b) => a.name.localeCompare(b.name));
+  else if (sort === 'category') items.sort((a,b) => a.category.localeCompare(b.category));
+  else if (sort === 'qty') items.sort((a,b) => b.qty - a.qty);
+
+  if (!items.length) {
+    mainContent.innerHTML = `<div class="empty"><div class="empty-icon">📷</div><h3>No gear here yet</h3><p>Add your first item to get started</p><br><br><button class="btn btn-primary" onclick="openModal('addGear')">+ Add Gear</button></div>`;
+    return;
+  }
+  mainContent.innerHTML = `<div class="gear-grid">${items.map(g => gearCardHTML(g)).join('')}</div>`;
+  // Attach drag events
+  items.forEach(g => {
+    const el = mainContent.querySelector(`[data-gear-id="${g.id}"]`);
+    if (!el) return;
+    el.addEventListener('dragstart', e => onGearDragStart(e, g.id));
+    el.addEventListener('dragend', onGearDragEnd);
+  });
+}
+
+function gearCardHTML(g) {
+  return `<div class="gear-card" data-gear-id="${g.id}" draggable="true">
+    <div class="gear-card-bar bar-${g.category}"></div>
+    <div class="gear-card-body">
+      <div class="gear-card-name">${esc(g.name)}</div>
+      <div class="gear-card-brand">${esc(g.brand)}${g.model ? ' · ' + esc(g.model) : ''}</div>
+      <div class="gear-card-tags">
+        <span class="tag c-${g.category}">${CAT_ICONS[g.category]} ${CAT_LABELS[g.category]}</span>
+        ${g.serial ? `<span class="tag" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">#${esc(g.serial)}</span>` : ''}
+      </div>
+      ${g.notes ? `<div style="margin-top:7px;font-size:11px;color:var(--muted);line-height:1.4">${esc(g.notes)}</div>` : ''}
+      ${g.subitems && g.subitems.length ? `<div style="margin-top:6px;font-size:10px;color:var(--muted)">📋 ${g.subitems.length} sub-item${g.subitems.length!==1?'s':''}</div>` : ''}
+    </div>
+    <div class="gear-card-footer">
+      <div class="gear-card-qty">Qty: <strong>${g.qty}</strong></div>
+      <div class="card-actions">
+        <button class="icon-btn quick-add" title="Add to list" onclick="promptAddToList('${g.id}')">📋</button>
+        <button class="icon-btn" title="Edit" onclick="editGear('${g.id}')">✏️</button>
+        <button class="icon-btn" title="Delete" onclick="deleteGear('${g.id}')">🗑️</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── PACK LISTS VIEW (split panel) ──
+function renderListsView() {
+  const mainContent = document.getElementById('mainContent');
+  const toolbar = document.getElementById('mainToolbar');
+  toolbar.style.display = 'none';
+  mainContent.style.padding = '0';
+  mainContent.style.overflow = 'hidden';
+  mainContent.style.display = 'flex';
+  mainContent.style.flexDirection = 'column';
+  mainContent.style.height = '100%';
+
+  if (!lists.length) {
+    mainContent.innerHTML = `<div class="empty" style="padding-top:80px"><div class="empty-icon">🗒️</div><h3>No pack lists yet</h3><p>Create a list and then drag gear into it</p><br><br><button class="btn btn-primary" onclick="openModal('newList')">+ New List</button></div>`;
+    return;
+  }
+
+  if (!activeListId || !lists.find(l => l.id === activeListId)) {
+    activeListId = lists[0].id;
+  }
+  const activeList = lists.find(l => l.id === activeListId);
+
+  const search = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase() : '';
+
+  // Filter gear items not in active list for visual state
+  const inListIds = new Set((activeList ? activeList.items.map(i => i.gearId) : []));
+
+  // Build gear rows for left panel
+  let gearItems = [...gear];
+  gearItems.sort((a,b) => a.name.localeCompare(b.name));
+
+  const gearRowsHTML = gearItems.map(g => {
+    const inList = inListIds.has(g.id);
+    return `<div class="gear-row ${inList ? 'in-list' : ''}" data-gear-id="${g.id}" draggable="true" onclick="addGearToActiveList('${g.id}')" title="${inList ? 'Already in this list' : 'Click or drag to add to list'}">
+      <span class="drag-handle" title="Drag to list">⠿</span>
+      <span class="cat-dot dot-${g.category}" style="flex-shrink:0"></span>
+      <span class="gear-row-name">${esc(g.name)}</span>
+      <span class="gear-row-brand">${esc(g.brand)}</span>
+      ${inList ? '<span style="color:var(--accent);font-size:11px;flex-shrink:0">✓ Added</span>' : '<span style="color:var(--muted);font-size:18px;flex-shrink:0">+</span>'}
+    </div>`;
+  }).join('');
+
+  // Build list tabs
+  const tabsHTML = lists.map(l => `
+    <div class="list-tab ${l.id === activeListId ? 'active' : ''}" onclick="selectList('${l.id}')">${esc(l.name)}</div>
+  `).join('');
+
+  // Build active list items
+  let listItemsHTML = '';
+  if (activeList && activeList.items.length) {
+    const total = activeList.items.length;
+    const checked = activeList.items.filter(i => i.checked).length;
+    // Count sub-items for secondary progress display
+    let totalSubs = 0, checkedSubs = 0;
+    activeList.items.forEach(li => {
+      const g = gear.find(x => x.id === li.gearId);
+      const subs = g ? (g.subitems || []) : [];
+      totalSubs += subs.length;
+      if (li.subChecked) checkedSubs += subs.filter(si => !!li.subChecked[si.id]).length;
+    });
+    const pct = total ? Math.round(checked/total*100) : 0;
+    listItemsHTML = activeList.items.map(li => {
+      const g = gear.find(x => x.id === li.gearId);
+      if (!g) return '';
+      const subs = g.subitems || [];
+      // sub-item checked state stored on li.subChecked = {id: bool}
+      if (!li.subChecked) li.subChecked = {};
+      const subRows = subs.map(si => {
+        const checked = !!li.subChecked[si.id];
+        return `<div class="sub-list-row">
+          <div class="pack-checkbox ${checked?'checked':''}" onclick="toggleSubCheck('${activeList.id}','${g.id}','${si.id}')">${checked?'✓':''}</div>
+          <span class="sub-list-name ${checked?'checked':''}">${esc(si.text)}</span>
+        </div>`;
+      }).join('');
+      const subCheckedCount = subs.filter(si => !!li.subChecked[si.id]).length;
+      const hasSubList = subs.length > 0;
+      const subBadge = hasSubList ? `<span class="sub-list-badge">${subCheckedCount}/${subs.length}</span>` : '';
+      const subToggle = hasSubList ? `<button class="sub-list-toggle" id="st-${g.id}" onclick="toggleSubList('${g.id}')"><span class="arrow">▶</span> ${subs.length} sub-item${subs.length!==1?'s':''}</button>` : '';
+      const subBody = hasSubList ? `<div class="sub-list-body" id="sb-${g.id}">${subRows}</div>` : '';
+      return `<div class="pack-list-item" style="flex-wrap:wrap;">
+        <div class="pack-checkbox ${li.checked?'checked':''}" onclick="toggleCheck('${activeList.id}','${g.id}')">${li.checked?'✓':''}</div>
+        <span class="cat-dot dot-${g.category}" style="width:8px;height:8px;flex-shrink:0"></span>
+        <span class="pack-item-name ${li.checked?'checked':''}">${esc(g.name)}</span>
+        ${subBadge}
+        ${subToggle}
+        <span class="pack-item-qty">×${li.qty}</span>
+        <button class="remove-item" onclick="removeFromList('${activeList.id}','${g.id}')" title="Remove">✕</button>
+        ${subBody}
+      </div>`;
+    }).join('');
+
+    const footerProgress = `<div class="list-detail-footer">
+      <div class="progress-ring"><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${pct}%"></div></div><span>${checked}/${total} items · ${pct}%${totalSubs > 0 ? ' · ' + checkedSubs + '/' + totalSubs + ' sub-items' : ''}</span></div>
+      <div class="list-footer-actions">
+        <button class="btn btn-accent-ghost btn-sm mobile-only" onclick="openGearSheet()" style="display:none">+ Add Gear</button>
+        <button class="btn btn-ghost btn-sm" onclick="printChecklist('${activeList.id}')">🖨️ Print</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteList('${activeList.id}')">🗑️ Delete List</button>
+      </div>
+    </div>`;
+
+    mainContent.innerHTML = buildSplitHTML(tabsHTML, activeList, gearRowsHTML,
+      `<div class="drop-zone" id="dropZoneInner">${listItemsHTML}</div>`, footerProgress);
+  } else {
+    const emptyDrop = `<div class="drop-zone" id="dropZoneInner">
+      <div class="drop-zone-empty">
+        <div class="dz-icon">📋</div>
+        <div><strong>Drop gear here</strong></div>
+        <div class="drop-zone-hint">…or click any item on the left to add it</div>
+      </div>
+    </div>`;
+    const footerProgress = `<div class="list-detail-footer">
+      <div class="list-footer-actions">
+        <button class="btn btn-accent-ghost btn-sm mobile-only" onclick="openGearSheet()" style="display:none">+ Add Gear</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteList('${activeList ? activeList.id : ''}')">🗑️ Delete List</button>
+      </div>
+    </div>`;
+    mainContent.innerHTML = buildSplitHTML(tabsHTML, activeList, gearRowsHTML, emptyDrop, footerProgress);
+  }
+
+  // Attach drag events to gear rows
+  mainContent.querySelectorAll('.gear-row[data-gear-id]').forEach(el => {
+    const gid = el.dataset.gearId;
+    el.addEventListener('dragstart', e => { onGearDragStart(e, gid); });
+    el.addEventListener('dragend', onGearDragEnd);
+  });
+
+  // Attach drop zone events
+  const dz = document.getElementById('dropZoneInner');
+  if (dz) {
+    dz.addEventListener('dragover', onDropZoneDragOver);
+    dz.addEventListener('dragleave', onDropZoneDragLeave);
+    dz.addEventListener('drop', onDropZoneDrop);
+  }
+}
+
+function buildSplitHTML(tabsHTML, activeList, gearRowsHTML, dropContent, footerHTML) {
+  return `<div class="lists-split" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    <!-- Tabs row -->
+    <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <div class="list-tabs" style="flex:1">${tabsHTML}</div>
+      <button class="btn btn-accent-ghost btn-sm" onclick="openModal('newList')">+ New List</button>
+    </div>
+    <!-- Split body -->
+    <div style="display:flex;flex:1;overflow:hidden;">
+      <!-- LEFT: gear inventory -->
+      <div class="lists-left">
+        <div class="lists-left-toolbar">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Inventory</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:auto">Click or drag →</span>
+        </div>
+        <div class="lists-left-content">${gearRowsHTML || '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No gear yet.<br><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="openModal(\'addGear\')">+ Add Gear</button></div>'}</div>
+      </div>
+      <!-- RIGHT: active list -->
+      <div class="lists-right">
+        <div class="list-detail-header">
+          <div class="list-detail-name">${esc(activeList ? activeList.name : '')}</div>
+          ${activeList && activeList.notes ? `<div class="list-detail-meta">${esc(activeList.notes)}</div>` : ''}
+        </div>
+        <div class="list-detail" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          ${dropContent}
+        </div>
+        ${footerHTML}
+      </div>
+    </div>
+  </div>`;
+}
+
+function selectList(id) {
+  activeListId = id;
+  renderListsView();
+}
+
+// ── STATS ──
+function renderStats() {
+  const total = gear.length, totalQty = gear.reduce((s,g) => s+g.qty, 0);
+  document.getElementById('cnt-all').textContent = total;
+  document.getElementById('cnt-lists').textContent = lists.length;
+  CATS.forEach(c => { document.getElementById('cnt-'+c).textContent = gear.filter(g => g.category === c).length; });
+  const stats = document.getElementById('statsBar');
+  stats.innerHTML = `
+    <div class="stat"><span class="stat-val">${total}</span><span class="stat-label">Items</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><span class="stat-val">${totalQty}</span><span class="stat-label">Units</span></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><span class="stat-val">${lists.length}</span><span class="stat-label">Lists</span></div>
+    <div class="stat-divider"></div>
+    ${CATS.filter(c => gear.some(g=>g.category===c)).map(c =>
+      `<div class="stat"><span class="stat-val" style="color:var(--cat-${c})">${gear.filter(g=>g.category===c).length}</span><span class="stat-label">${CAT_LABELS[c]}</span></div>`
+    ).join('<div class="stat-divider"></div>')}`;
+}
+function renderAll() { renderStats(); renderView(); }
+
+// ── IMPORT MODE ──
+function selectMode(m) {
+  importMode = m;
+  document.getElementById('modeReplace').classList.toggle('selected', m === 'replace');
+  document.getElementById('modeMerge').classList.toggle('selected', m === 'merge');
+}
+
+// ── EXPORT ──
+function exportData() {
+  const data = JSON.stringify({ gear, lists, exportedAt: new Date().toISOString() }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'avrack-backup.json'; a.click(); URL.revokeObjectURL(url);
+  showToast('Exported avrack-backup.json');
+}
+function copyDataToClipboard() {
+  const data = JSON.stringify({ gear, lists, exportedAt: new Date().toISOString() }, null, 2);
+  navigator.clipboard.writeText(data).then(() => showToast('Copied to clipboard')).catch(() => showToast('Copy failed', 'error'));
+}
+
+// ── IMPORT ──
+function handleDrop(e) { e.preventDefault(); document.getElementById('dropZone').classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f) readImportFile(f); }
+function handleFileSelect(e) { const f = e.target.files[0]; if (f) readImportFile(f); e.target.value = ''; }
+function readImportFile(f) { const r = new FileReader(); r.onload = ev => processImport(ev.target.result); r.readAsText(f); }
+function importFromPaste() { const txt = document.getElementById('pasteImport').value.trim(); if (!txt) { showToast('Nothing to import', 'error'); return; } processImport(txt); }
+function processImport(jsonStr) {
+  let data; try { data = JSON.parse(jsonStr); } catch(e) { showToast('Invalid JSON', 'error'); return; }
+  if (!data.gear && !data.lists) { showToast('Unrecognized format', 'error'); return; }
+  const inGear = Array.isArray(data.gear) ? data.gear : [];
+  const inLists = Array.isArray(data.lists) ? data.lists : [];
+  if (importMode === 'replace') { gear = inGear; lists = inLists; showToast(`Imported ${inGear.length} items & ${inLists.length} lists`); }
+  else {
+    const egids = new Set(gear.map(g => g.id)), elids = new Set(lists.map(l => l.id));
+    const ng = inGear.filter(g => !egids.has(g.id)), nl = inLists.filter(l => !elids.has(l.id));
+    gear = [...gear, ...ng]; lists = [...lists, ...nl];
+    showToast(`Merged +${ng.length} items & +${nl.length} lists`);
+  }
+  save(); closeModal('dataManager'); document.getElementById('pasteImport').value = ''; renderAll();
+}
+
+// ── CHECKLIST EXPORT ──
+function buildChecklistHTML(listId) {
+  const l = lists.find(x => x.id === listId); if (!l) return null;
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const grouped = {};
+  l.items.forEach(li => { const g = gear.find(x => x.id === li.gearId); if (!g) return; if (!grouped[g.category]) grouped[g.category] = []; grouped[g.category].push({ g, li }); });
+  const totalItems = l.items.length, checkedItems = l.items.filter(i => i.checked).length;
+  const catSections = Object.keys(grouped).map(cat => {
+    const color = CAT_COLORS_HEX[cat] || '#6b7280';
+    const rows = grouped[cat].map(({ g, li }) => {
+      const subs = g.subitems || [];
+      const mainRow = `<tr>
+        <td class="check-cell"><div class="checkbox ${li.checked?'checked':''}"></div></td>
+        <td class="item-name">${g.name}${g.brand?`<span class="item-brand"> — ${g.brand}${g.model?' '+g.model:''}</span>`:''}</td>
+        <td class="item-serial">${g.serial||'—'}</td>
+        <td class="item-qty">×${li.qty}</td>
+        <td class="item-notes">${g.notes||''}</td>
+      </tr>`;
+      const subRows = subs.map(si => {
+        const checked = li.subChecked && li.subChecked[si.id];
+        return `<tr class="sub-row">
+          <td class="check-cell"><div class="checkbox sub-checkbox ${checked?'checked':''}"></div></td>
+          <td class="item-name sub-item-label" colspan="4"><span class="sub-indent">↳</span> ${si.text}</td>
+        </tr>`;
+      }).join('');
+      return mainRow + subRows;
+    }).join('');
+    return `<div class="cat-section"><div class="cat-header" style="border-left:4px solid ${color};background:${color}18;">
+      <span class="cat-icon">${CAT_ICONS[cat]}</span><span class="cat-label">${CAT_LABELS[cat]}</span>
+      <span class="cat-count">${grouped[cat].length} item${grouped[cat].length!==1?'s':''}</span></div>
+      <table class="item-table"><thead><tr><th style="width:36px">✓</th><th>Item</th><th style="width:110px">Serial</th><th style="width:46px">Qty</th><th style="width:180px">Notes</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join('');
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Checklist — ${l.name}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Barlow',sans-serif;color:#1a1d2e;background:#fff;padding:32px;font-size:13px}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;border-bottom:2px solid #1a1d2e;padding-bottom:14px}
+.brand{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;letter-spacing:3px;text-transform:uppercase;color:#0d9e7e}
+.brand span{color:#1a1d2e}.list-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:26px;letter-spacing:1px;line-height:1.1}
+.list-meta{font-size:11px;color:#7a82a0;margin-top:3px}.header-right{text-align:right}.print-date{font-size:11px;color:#7a82a0;margin-top:3px}
+.summary-bar{display:flex;gap:18px;background:#f0f2f7;border-radius:8px;padding:11px 16px;margin-bottom:20px;flex-wrap:wrap}
+.summary-stat{display:flex;flex-direction:column}.summary-val{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:700}
+.summary-label{font-size:10px;color:#7a82a0;text-transform:uppercase;letter-spacing:1px}.summary-divider{width:1px;background:#d0d5e8}
+.cat-section{margin-bottom:18px}.cat-header{display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:5px;margin-bottom:0}
+.cat-icon{font-size:15px}.cat-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;text-transform:uppercase;flex:1}
+.cat-count{font-size:11px;color:#7a82a0}
+.item-table{width:100%;border-collapse:collapse}.item-table thead tr{background:#f8f9fc}
+.item-table th{padding:5px 9px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#7a82a0;border-bottom:1px solid #d0d5e8}
+.item-table td{padding:8px 9px;border-bottom:1px solid #e8ebf2;vertical-align:middle}
+.item-table tbody tr:last-child td{border-bottom:none}
+.check-cell{text-align:center}.checkbox{width:15px;height:15px;border:2px solid #b0b8d0;border-radius:3px;display:inline-block;position:relative}
+.checkbox.checked{background:#0d9e7e;border-color:#0d9e7e}.checkbox.checked::after{content:'✓';position:absolute;top:-2px;left:2px;font-size:11px;color:white;font-weight:bold}
+.item-name{font-weight:600;font-size:13px}.item-brand{font-weight:400;color:#7a82a0;font-size:11px}.item-serial{font-family:monospace;font-size:11px;color:#7a82a0}
+.item-qty{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-align:center}.item-notes{font-size:11px;color:#9ca3af}.sub-row td{padding:4px 9px;border-bottom:1px solid #f0f0f0;background:#fafbfc}.sub-item-label{font-size:11px;color:#7a82a0;font-weight:400}.sub-indent{color:#b0b8d0;margin-right:4px}.sub-checkbox{width:12px!important;height:12px!important;border-radius:2px!important}.sub-checkbox.checked{background:#0d9e7e;border-color:#0d9e7e}
+.footer{margin-top:28px;border-top:1px solid #d0d5e8;padding-top:12px;display:flex;justify-content:space-between;align-items:center;color:#7a82a0;font-size:11px}
+.sig-line{display:flex;gap:36px}.sig{display:flex;flex-direction:column;gap:22px}.sig-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#b0b8d0}
+.sig-underline{border-bottom:1px solid #b0b8d0;width:130px}
+@media print{body{padding:14px}@page{margin:1.5cm;size:A4 portrait}}
+</style></head><body>
+<div class="page-header"><div><div class="brand">AV<span>Rack</span></div><div class="list-title">${l.name}</div>${l.notes?`<div class="list-meta">${l.notes}</div>`:''}</div>
+<div class="header-right"><div style="font-size:10px;color:#7a82a0;text-transform:uppercase;letter-spacing:1px">Packing Checklist</div><div class="print-date">${dateStr}</div><div class="print-date" style="margin-top:2px">${checkedItems} of ${totalItems} packed</div></div></div>
+<div class="summary-bar">
+<div class="summary-stat"><span class="summary-val">${totalItems}</span><span class="summary-label">Total Items</span></div><div class="summary-divider"></div>
+<div class="summary-stat"><span class="summary-val">${l.items.reduce((s,li)=>{const g=gear.find(x=>x.id===li.gearId);return s+(g?li.qty:0);},0)}</span><span class="summary-label">Total Units</span></div><div class="summary-divider"></div>
+${Object.keys(grouped).map(cat=>`<div class="summary-stat"><span class="summary-val" style="color:${CAT_COLORS_HEX[cat]}">${grouped[cat].length}</span><span class="summary-label">${CAT_LABELS[cat]}</span></div>`).join('<div class="summary-divider"></div>')}
+</div>
+${catSections}
+<div class="footer"><div class="sig-line"><div class="sig"><div class="sig-underline"></div><div class="sig-label">Packed by</div></div><div class="sig"><div class="sig-underline"></div><div class="sig-label">Date</div></div><div class="sig"><div class="sig-underline"></div><div class="sig-label">Event / Job</div></div></div><div>Generated by AVRack</div></div>
+<script>window.onload=()=>window.print();<\/script></body></html>`;
+}
+function printChecklist(listId) {
+  const html = buildChecklistHTML(listId); if (!html) return;
+  const win = window.open('', '_blank'); win.document.write(html); win.document.close();
+  showToast('Checklist opened for printing');
+}
+function exportChecklistHTML(listId) {
+  const l = lists.find(x => x.id === listId); if (!l) return;
+  const html = buildChecklistHTML(listId);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safe = l.name.replace(/[^a-z0-9]/gi,'-').toLowerCase();
+  a.href = url; a.download = `avrack-checklist-${safe}.html`; a.click(); URL.revokeObjectURL(url);
+  showToast('Checklist downloaded');
+}
+
+// ── GEAR INVENTORY EXPORT ──
+function buildGearInventoryHTML() {
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const totalItems = gear.length;
+  const totalUnits = gear.reduce((s, g) => s + g.qty, 0);
+
+  // Group by category
+  const grouped = {};
+  CATS.forEach(c => { grouped[c] = gear.filter(g => g.category === c); });
+
+  const catSections = CATS.filter(c => grouped[c].length > 0).map(cat => {
+    const color = CAT_COLORS_HEX[cat] || '#6b7280';
+    const rows = grouped[cat].map((g, i) => {
+      const subCount = g.subitems && g.subitems.length ? g.subitems.length : 0;
+      const subRows = (g.subitems || []).map(si =>
+        `<tr class="sub-row">
+          <td></td><td class="sub-item-cell" colspan="5"><span class="sub-arrow">↳</span> ${si.text}</td>
+        </tr>`).join('');
+      return `<tr class="${i % 2 === 1 ? 'alt' : ''}">
+        <td class="item-num">${i + 1}</td>
+        <td class="item-name-cell">${g.name}${g.brand ? `<span class="item-brand"> — ${g.brand}${g.model ? ' ' + g.model : ''}</span>` : ''}${subCount ? `<span class="sub-count"> · ${subCount} sub-item${subCount !== 1 ? 's' : ''}</span>` : ''}</td>
+        <td class="item-serial">${g.serial || '—'}</td>
+        <td class="item-qty-cell">×${g.qty}</td>
+        <td class="item-notes-cell">${g.notes || ''}</td>
+      </tr>${subRows}`;
+    }).join('');
+
+    return `<div class="cat-section">
+      <div class="cat-header" style="border-left:4px solid ${color};background:${color}18;">
+        <span class="cat-icon">${CAT_ICONS[cat]}</span>
+        <span class="cat-label">${CAT_LABELS[cat]}</span>
+        <span class="cat-count">${grouped[cat].length} item${grouped[cat].length !== 1 ? 's' : ''} · ${grouped[cat].reduce((s,g)=>s+g.qty,0)} units</span>
+      </div>
+      <table class="item-table">
+        <thead><tr>
+          <th style="width:32px">#</th>
+          <th>Item</th>
+          <th style="width:120px">Serial / Asset</th>
+          <th style="width:50px">Qty</th>
+          <th>Notes</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  const catSummary = CATS.filter(c => grouped[c].length > 0).map(cat =>
+    `<div class="summary-stat"><span class="summary-val" style="color:${CAT_COLORS_HEX[cat]}">${grouped[cat].length}</span><span class="summary-label">${CAT_LABELS[cat]}</span></div>`
+  ).join('<div class="summary-divider"></div>');
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>AVRack — Gear Inventory</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;color:#1a1d2e;background:#fff;padding:32px;font-size:13px}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;border-bottom:2px solid #1a1d2e;padding-bottom:14px}
+.brand{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:19px;letter-spacing:3px;text-transform:uppercase;color:#0d9e7e}
+.brand span{color:#1a1d2e}
+.page-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:28px;letter-spacing:1px;line-height:1.1}
+.header-right{text-align:right}
+.print-date{font-size:11px;color:#7a82a0;margin-top:3px}
+.summary-bar{display:flex;gap:16px;background:#f0f2f7;border-radius:8px;padding:11px 16px;margin-bottom:22px;flex-wrap:wrap;align-items:center}
+.summary-stat{display:flex;flex-direction:column}
+.summary-val{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700}
+.summary-label{font-size:10px;color:#7a82a0;text-transform:uppercase;letter-spacing:1px}
+.summary-divider{width:1px;background:#d0d5e8;align-self:stretch}
+.cat-section{margin-bottom:22px}
+.cat-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:5px;margin-bottom:0}
+.cat-icon{font-size:16px}.cat-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;text-transform:uppercase;flex:1}
+.cat-count{font-size:11px;color:#7a82a0}
+.item-table{width:100%;border-collapse:collapse}
+.item-table thead tr{background:#f8f9fc}
+.item-table th{padding:6px 10px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#7a82a0;border-bottom:1px solid #d0d5e8}
+.item-table td{padding:9px 10px;border-bottom:1px solid #e8ebf2;vertical-align:top}
+.item-table tr.alt td{background:#fafbfc}
+.item-table tbody tr:last-child td{border-bottom:none}
+.item-num{color:#b0b8d0;font-size:11px;text-align:center;font-family:'Barlow Condensed',sans-serif}
+.item-name-cell{font-weight:600}
+.item-brand{font-weight:400;color:#7a82a0;font-size:11px}
+.item-serial{font-family:monospace;font-size:11px;color:#7a82a0}
+.item-qty-cell{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-align:center}
+.item-notes-cell{font-size:11px;color:#9ca3af}
+.sub-count{font-weight:400;color:#b0b8d0;font-size:10px}
+.sub-row td{padding:4px 10px;border-bottom:1px solid #f0f2f5;background:#fafbfd}
+.sub-item-cell{font-size:11px;color:#7a82a0;padding-left:20px!important}
+.sub-arrow{color:#c0c8d8;margin-right:4px}
+.footer{margin-top:28px;border-top:1px solid #d0d5e8;padding-top:12px;display:flex;justify-content:space-between;align-items:center;color:#7a82a0;font-size:11px}
+@media print{body{padding:16px}@page{margin:1.5cm;size:A4 portrait}}
+</style></head><body>
+<div class="page-header">
+  <div>
+    <div class="brand">AV<span>Rack</span></div>
+    <div class="page-title">Gear Inventory</div>
+    <div style="font-size:12px;color:#7a82a0;margin-top:3px">${totalItems} items · ${totalUnits} total units</div>
+  </div>
+  <div class="header-right">
+    <div style="font-size:10px;color:#7a82a0;text-transform:uppercase;letter-spacing:1px">Master Inventory List</div>
+    <div class="print-date">${dateStr}</div>
+  </div>
+</div>
+<div class="summary-bar">
+  <div class="summary-stat"><span class="summary-val">${totalItems}</span><span class="summary-label">Total Items</span></div>
+  <div class="summary-divider"></div>
+  <div class="summary-stat"><span class="summary-val">${totalUnits}</span><span class="summary-label">Total Units</span></div>
+  <div class="summary-divider"></div>
+  ${catSummary}
+</div>
+${catSections}
+<div class="footer">
+  <div>Generated by AVRack · ${dateStr}</div>
+  <div>Total: ${totalItems} items · ${totalUnits} units</div>
+</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+}
+
+function printGearInventory() {
+  if (!gear.length) { showToast('No gear in inventory yet', 'error'); return; }
+  const html = buildGearInventoryHTML();
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  showToast('Inventory opened for printing');
+}
+
+function exportGearInventoryHTML() {
+  if (!gear.length) { showToast('No gear in inventory yet', 'error'); return; }
+  const html = buildGearInventoryHTML();
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'avrack-inventory.html'; a.click(); URL.revokeObjectURL(url);
+  showToast('Inventory downloaded');
+}
+
+function exportGearCSV() {
+  if (!gear.length) { showToast('No gear in inventory yet', 'error'); return; }
+  const headers = ['Name','Brand','Model','Category','Quantity','Serial/Asset','Notes','Sub-items'];
+  const rows = gear.map(g => {
+    const subs = (g.subitems || []).map(s => s.text).join(' | ');
+    return [g.name, g.brand, g.model, CAT_LABELS[g.category] || g.category, g.qty, g.serial, g.notes, subs]
+      .map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'avrack-inventory.csv'; a.click(); URL.revokeObjectURL(url);
+  showToast('CSV exported');
+}
+
+function populateChecklistPicker() {
+  const picker = document.getElementById('checklistListPicker');
+  const noMsg = document.getElementById('noListsMsg');
+  if (!lists.length) { noMsg.textContent = 'No pack lists yet.'; picker.innerHTML = ''; return; }
+  noMsg.textContent = '';
+  picker.innerHTML = lists.map(l => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);">
+      <span style="font-size:16px">🗒️</span>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(l.name)}</div><div style="font-size:11px;color:var(--muted)">${l.items.length} items</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="printChecklist('${l.id}')">🖨️ Print</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportChecklistHTML('${l.id}')">⬇ HTML</button>
+    </div>`).join('');
+}
+
+// ── MOBILE ──
+function isMobile() { return window.innerWidth <= 700; }
+
+function mobileTab(tab) {
+  // Update tab button active states
+  ['all','lists','cat','data'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('active', t === tab);
+  });
+
+  if (tab === 'cat') {
+    openCatSheet();
+    return;
+  }
+  if (tab === 'all') {
+    setView('all', document.querySelector('.nav-item'));
+  } else if (tab === 'lists') {
+    setView('lists', document.querySelectorAll('.nav-item')[1]);
+  }
+  // Close any open sheets
+  closeCatSheet();
+  closeGearSheet();
+}
+
+// Category browser sheet
+function openCatSheet() {
+  const list = document.getElementById('catSheetList');
+  const cats = [
+    { key: 'all', label: 'All Gear', icon: '📦', count: gear.length },
+    ...CATS.map(c => ({ key: c, label: CAT_LABELS[c], icon: CAT_ICONS[c], count: gear.filter(g => g.category === c).length }))
+      .filter(c => c.count > 0)
+  ];
+  list.innerHTML = cats.map(c => `
+    <div class="gear-row" style="cursor:pointer;margin-bottom:6px" onclick="closeCatSheet();setView('${c.key}',null);document.getElementById('tab-cat').classList.add('active');">
+      <span style="font-size:18px;width:28px;text-align:center;flex-shrink:0">${c.icon}</span>
+      <span class="gear-row-name">${c.label}</span>
+      <span class="sub-list-badge">${c.count}</span>
+    </div>`).join('');
+  document.getElementById('catSheetOverlay').classList.add('open');
+  document.getElementById('catSheet').classList.add('open');
+}
+function closeCatSheet() {
+  document.getElementById('catSheetOverlay').classList.remove('open');
+  document.getElementById('catSheet').classList.remove('open');
+}
+
+// Gear picker sheet for pack lists on mobile
+function openGearSheet() {
+  document.getElementById('gearSheetSearch').value = '';
+  renderGearSheet();
+  document.getElementById('gearSheetOverlay').classList.add('open');
+  document.getElementById('gearSheet').classList.add('open');
+}
+function closeGearSheet() {
+  document.getElementById('gearSheetOverlay').classList.remove('open');
+  document.getElementById('gearSheet').classList.remove('open');
+}
+function renderGearSheet() {
+  if (!activeListId) return;
+  const l = lists.find(x => x.id === activeListId);
+  const inListIds = new Set(l ? l.items.map(i => i.gearId) : []);
+  const search = document.getElementById('gearSheetSearch').value.toLowerCase();
+  const filtered = gear.filter(g => !search || g.name.toLowerCase().includes(search) || (g.brand||'').toLowerCase().includes(search));
+  const list = document.getElementById('gearSheetList');
+  if (!filtered.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px">No gear found</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(g => {
+    const inList = inListIds.has(g.id);
+    return `<div class="gear-row ${inList?'in-list':''}" style="margin-bottom:6px" onclick="${inList ? '' : `addGearToActiveList('${g.id}');renderGearSheet();`}">
+      <span class="cat-dot dot-${g.category}" style="flex-shrink:0"></span>
+      <span class="gear-row-name">${esc(g.name)}</span>
+      <span class="gear-row-brand">${esc(g.brand)}</span>
+      ${inList
+        ? '<span style="color:var(--accent);font-size:11px;font-weight:600;flex-shrink:0">✓ Added</span>'
+        : '<span style="color:var(--accent);font-size:20px;flex-shrink:0;font-weight:300">+</span>'}
+    </div>`;
+  }).join('');
+}
+
+// Patch renderListsView to add a mobile "Add Gear" button in the list footer
+const _origBuildSplitHTML = buildSplitHTML;
+
+// ── MISC ──
+function toggleMobileSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (window.innerWidth <= 700) {
+    sb.classList.toggle('mobile-open');
+  } else {
+    sb.classList.toggle('collapsed');
+  }
+}
+
+document.getElementById('gi-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveGear(); });
+document.getElementById('pl-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveList(); });
+
+// ── INIT ──
+load();
+try { applyTheme(localStorage.getItem('avr_theme') !== 'light'); } catch(e) { applyTheme(true); }
+renderAll();
+</script>
+</body>
+</html>
