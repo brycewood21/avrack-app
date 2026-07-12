@@ -493,6 +493,7 @@
 
 <header>
   <div class="logo">AV<span>Rack</span></div>
+  <div id="syncStatus" style="font-size:11px;color:var(--muted);opacity:0;transition:opacity 0.4s;white-space:nowrap;"></div>
   <div class="header-actions">
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙 <span id="themeLabel">Dark</span></button>
     <button class="btn btn-ghost btn-sm data-btn" onclick="openModal('dataManager')" title="Import / Export data">⬆⬇ Data</button>
@@ -745,11 +746,125 @@ const CAT_COLORS_HEX = { video:'#3b82f6', audio:'#f59e0b', storage:'#8b5cf6', li
 function uid() { return Math.random().toString(36).slice(2,10); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ── SUPABASE CONFIG ──
+const SUPA_URL = 'https://xrhtawmvmpybfrfnomoc.supabase.co';
+const SUPA_KEY = 'sb_publishable_7ykaL5GNUQfwtsoWU_RM1Q_PTt2kkAm';
+
+async function supaFetch(path, method = 'GET', body = null, extra = {}) {
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : '',
+      ...extra
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPA_URL + path, opts);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
 // ── PERSIST ──
-function save() { try { localStorage.setItem('avr_gear', JSON.stringify(gear)); localStorage.setItem('avr_lists', JSON.stringify(lists)); } catch(e){} }
-function load() {
-  try { gear = JSON.parse(localStorage.getItem('avr_gear') || '[]'); lists = JSON.parse(localStorage.getItem('avr_lists') || '[]'); } catch(e){}
-  if (!gear.length && !lists.length) seedDefaults();
+// localStorage = fast offline cache; Supabase = source of truth
+function saveLocal() {
+  try {
+    localStorage.setItem('avr_gear', JSON.stringify(gear));
+    localStorage.setItem('avr_lists', JSON.stringify(lists));
+  } catch(e) {}
+}
+function loadLocal() {
+  try {
+    gear  = JSON.parse(localStorage.getItem('avr_gear')  || '[]');
+    lists = JSON.parse(localStorage.getItem('avr_lists') || '[]');
+  } catch(e) {}
+}
+
+// Write a single gear item to Supabase (upsert)
+async function pushGear(item) {
+  try {
+    await supaFetch('/rest/v1/gear', 'POST', {
+      id: item.id, name: item.name, brand: item.brand, model: item.model,
+      category: item.category, qty: item.qty, serial: item.serial,
+      notes: item.notes, subitems: item.subitems || []
+    }, { 'Prefer': 'resolution=merge-duplicates' });
+  } catch(e) { console.warn('Supabase gear push failed:', e.message); }
+}
+
+// Delete a gear item from Supabase
+async function deleteGearRemote(id) {
+  try {
+    await supaFetch('/rest/v1/gear?id=eq.' + id, 'DELETE');
+  } catch(e) { console.warn('Supabase gear delete failed:', e.message); }
+}
+
+// Write a single list to Supabase (upsert)
+async function pushList(list) {
+  try {
+    await supaFetch('/rest/v1/lists', 'POST', {
+      id: list.id, name: list.name, notes: list.notes, items: list.items || []
+    }, { 'Prefer': 'resolution=merge-duplicates' });
+  } catch(e) { console.warn('Supabase list push failed:', e.message); }
+}
+
+// Delete a list from Supabase
+async function deleteListRemote(id) {
+  try {
+    await supaFetch('/rest/v1/lists?id=eq.' + id, 'DELETE');
+  } catch(e) { console.warn('Supabase list delete failed:', e.message); }
+}
+
+// Main save — local cache + push changed record to Supabase
+async function save(changedGear = null, changedList = null) {
+  saveLocal();
+  if (changedGear) await pushGear(changedGear);
+  if (changedList) await pushList(changedList);
+}
+
+// Load from Supabase on startup, fall back to localStorage
+async function load() {
+  showSyncStatus('Syncing…');
+  try {
+    const [remoteGear, remoteLists] = await Promise.all([
+      supaFetch('/rest/v1/gear?select=*&order=created_at.asc'),
+      supaFetch('/rest/v1/lists?select=*&order=created_at.asc')
+    ]);
+    gear  = remoteGear  || [];
+    lists = remoteLists || [];
+    // Ensure subitems is always an array
+    gear.forEach(g => { if (!Array.isArray(g.subitems)) g.subitems = []; });
+    lists.forEach(l => { if (!Array.isArray(l.items))  l.items  = []; });
+    saveLocal();
+    showSyncStatus('Synced ✓', 2000);
+    if (!gear.length && !lists.length) {
+      // First time — seed defaults and push them
+      seedDefaults();
+      await Promise.all(gear.map(pushGear));
+      saveLocal();
+    }
+  } catch(e) {
+    console.warn('Supabase load failed, using local cache:', e.message);
+    loadLocal();
+    showSyncStatus('Offline — using local cache', 3000);
+    if (!gear.length && !lists.length) seedDefaults();
+  }
+}
+
+// Sync status indicator
+let syncStatusTimer;
+function showSyncStatus(msg, hideAfter = 0) {
+  let el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(syncStatusTimer);
+  if (hideAfter) syncStatusTimer = setTimeout(() => { el.style.opacity = '0'; }, hideAfter);
 }
 function seedDefaults() {
   gear = [
@@ -823,7 +938,7 @@ function saveGear() {
   };
   if (editingGearId) { const idx = gear.findIndex(g => g.id === editingGearId); if (idx >= 0) gear[idx] = item; }
   else gear.push(item);
-  save(); closeModal('addGear'); renderAll();
+  save(item, null); closeModal('addGear'); renderAll();
 }
 function editGear(id) {
   const g = gear.find(x => x.id === id); if (!g) return;
@@ -865,7 +980,8 @@ function deleteGear(id) {
   if (!confirm('Remove this item from your inventory?')) return;
   gear = gear.filter(g => g.id !== id);
   lists.forEach(l => { l.items = l.items.filter(i => i.gearId !== id); });
-  save(); renderAll();
+  saveLocal(); renderAll();
+  deleteGearRemote(id);
 }
 
 // ── PACK LIST CRUD ──
@@ -875,7 +991,7 @@ function saveList() {
   const nl = { id: uid(), name, notes: document.getElementById('pl-notes').value.trim(), items: [], created: Date.now() };
   lists.push(nl);
   activeListId = nl.id;
-  save(); closeModal('newList');
+  save(null, nl); closeModal('newList');
   document.getElementById('pl-name').value = '';
   document.getElementById('pl-notes').value = '';
   setView('lists', document.querySelector('.nav-item:nth-child(2)'));
@@ -884,12 +1000,13 @@ function deleteList(id) {
   if (!confirm('Delete this pack list?')) return;
   lists = lists.filter(l => l.id !== id);
   if (activeListId === id) activeListId = lists.length ? lists[0].id : null;
-  save(); renderAll();
+  saveLocal(); renderAll();
+  deleteListRemote(id);
 }
 function toggleCheck(listId, gearId) {
   const l = lists.find(x => x.id === listId); if (!l) return;
   const i = l.items.find(x => x.gearId === gearId); if (i) i.checked = !i.checked;
-  save(); renderListsView();
+  save(null, l); renderListsView();
 }
 function toggleSubList(gearId) {
   const toggle = document.getElementById('st-' + gearId);
@@ -903,13 +1020,13 @@ function toggleSubCheck(listId, gearId, subId) {
   const li = l.items.find(x => x.gearId === gearId); if (!li) return;
   if (!li.subChecked) li.subChecked = {};
   li.subChecked[subId] = !li.subChecked[subId];
-  save(); renderListsView();
+  save(null, l); renderListsView();
 }
 
 function removeFromList(listId, gearId) {
   const l = lists.find(x => x.id === listId); if (!l) return;
   l.items = l.items.filter(x => x.gearId !== gearId);
-  save(); renderListsView();
+  save(null, l); renderListsView();
 }
 function addGearToActiveList(gearId) {
   if (!activeListId) { showToast('Select or create a pack list first', 'error'); return; }
@@ -918,7 +1035,7 @@ function addGearToActiveList(gearId) {
   if (!l || !g) return;
   if (l.items.find(i => i.gearId === gearId)) { showToast('Already in this list'); return; }
   l.items.push({ gearId, qty: g.qty, checked: false });
-  save(); renderListsView();
+  save(null, l); renderListsView();
 }
 
 // ── PROMPT ADD (mobile fallback) ──
@@ -943,7 +1060,7 @@ function doAddToList(listId) {
   if (l.items.find(i => i.gearId === g.id)) { closeModal('addToList'); showToast('Already in this list'); return; }
   l.items.push({ gearId: g.id, qty: g.qty, checked: false });
   activeListId = listId;
-  save(); closeModal('addToList'); renderAll();
+  save(null, l); closeModal('addToList'); renderAll();
 }
 
 // ── DRAG AND DROP ──
@@ -1272,14 +1389,21 @@ function processImport(jsonStr) {
   if (!data.gear && !data.lists) { showToast('Unrecognized format', 'error'); return; }
   const inGear = Array.isArray(data.gear) ? data.gear : [];
   const inLists = Array.isArray(data.lists) ? data.lists : [];
-  if (importMode === 'replace') { gear = inGear; lists = inLists; showToast(`Imported ${inGear.length} items & ${inLists.length} lists`); }
-  else {
+  if (importMode === 'replace') {
+    gear = inGear; lists = inLists;
+    showToast(`Importing ${inGear.length} items & ${inLists.length} lists…`);
+  } else {
     const egids = new Set(gear.map(g => g.id)), elids = new Set(lists.map(l => l.id));
     const ng = inGear.filter(g => !egids.has(g.id)), nl = inLists.filter(l => !elids.has(l.id));
     gear = [...gear, ...ng]; lists = [...lists, ...nl];
-    showToast(`Merged +${ng.length} items & +${nl.length} lists`);
+    showToast(`Merging +${ng.length} items & +${nl.length} lists…`);
   }
-  save(); closeModal('dataManager'); document.getElementById('pasteImport').value = ''; renderAll();
+  saveLocal(); renderAll(); closeModal('dataManager'); document.getElementById('pasteImport').value = '';
+  // Push all to Supabase in background
+  Promise.all([
+    ...gear.map(pushGear),
+    ...lists.map(pushList)
+  ]).then(() => showToast('Sync complete ✓'));
 }
 
 // ── CHECKLIST EXPORT ──
