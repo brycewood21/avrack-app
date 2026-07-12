@@ -1,7 +1,7 @@
 {
   "name": "AVRack",
   "short_name": "AVRack",
-  "start_url": "./AVRack.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#0d0f14",
   "theme_color": "#0d0f14",
