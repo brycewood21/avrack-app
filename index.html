@@ -1227,7 +1227,7 @@ function renderStats() {
     <div class="stat-divider"></div>
     <div class="stat"><span class="stat-val">${lists.length}</span><span class="stat-label">Lists</span></div>
     <div class="stat-divider"></div>
-    ${CATS.filter(c => gear.some(g=>g.category===c)).map(c =>
+    ${CATS.map(c =>
       `<div class="stat"><span class="stat-val" style="color:var(--cat-${c})">${gear.filter(g=>g.category===c).length}</span><span class="stat-label">${CAT_LABELS[c]}</span></div>`
     ).join('<div class="stat-divider"></div>')}`;
 }
@@ -1555,7 +1555,6 @@ function openCatSheet() {
   const cats = [
     { key: 'all', label: 'All Gear', icon: '📦', count: gear.length },
     ...CATS.map(c => ({ key: c, label: CAT_LABELS[c], icon: CAT_ICONS[c], count: gear.filter(g => g.category === c).length }))
-      .filter(c => c.count > 0)
   ];
   list.innerHTML = cats.map(c => `
     <div class="gear-row" style="cursor:pointer;margin-bottom:6px" onclick="closeCatSheet();setView('${c.key}',null);document.getElementById('tab-cat').classList.add('active');">
