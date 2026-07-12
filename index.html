@@ -59,7 +59,7 @@
   .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
   .nav-item .count { margin-left: auto; font-size: 11px; background: var(--surface2); padding: 1px 7px; border-radius: 99px; color: var(--muted); }
   .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: hidden; min-width: 0; }
 
   /* TOOLBAR */
   .toolbar { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--surface); }
@@ -96,7 +96,7 @@
   .stat-divider { width: 1px; background: var(--border); }
 
   /* CONTENT */
-  .content { flex: 1; overflow-y: auto; padding: 16px; }
+  .content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; min-height: 0; -webkit-overflow-scrolling: touch; }
 
   /* GEAR GRID */
   .gear-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
@@ -429,6 +429,8 @@
     .content {
       padding-left:  max(10px, env(safe-area-inset-left, 0px));
       padding-right: max(10px, env(safe-area-inset-right, 0px));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* Gear grid: single column */
@@ -991,7 +993,12 @@ function renderGearView() {
   const mainContent = document.getElementById('mainContent');
   const toolbar = document.getElementById('mainToolbar');
   toolbar.style.display = 'flex';
-  mainContent.style.padding = '16px';
+  // Reset any overrides set by renderListsView
+  mainContent.style.overflow   = '';
+  mainContent.style.display    = '';
+  mainContent.style.flexDirection = '';
+  mainContent.style.height     = '';
+  mainContent.style.padding    = '';
 
   const search = document.getElementById('searchInput').value.toLowerCase();
   const sort = document.getElementById('sortSelect').value;
@@ -1052,6 +1059,7 @@ function renderListsView() {
   mainContent.style.display = 'flex';
   mainContent.style.flexDirection = 'column';
   mainContent.style.height = '100%';
+  mainContent.style.overflowY = 'hidden';
 
   if (!lists.length) {
     mainContent.innerHTML = `<div class="empty" style="padding-top:80px"><div class="empty-icon">🗒️</div><h3>No pack lists yet</h3><p>Create a list and then drag gear into it</p><br><br><button class="btn btn-primary" onclick="openModal('newList')">+ New List</button></div>`;
