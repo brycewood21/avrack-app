@@ -842,17 +842,11 @@ async function load() {
     lists.forEach(l => { if (!Array.isArray(l.items))  l.items  = []; });
     saveLocal();
     showSyncStatus('Synced ✓', 2000);
-    if (!gear.length && !lists.length) {
-      // First time — seed defaults and push them
-      seedDefaults();
-      await Promise.all(gear.map(pushGear));
-      saveLocal();
-    }
+    // Fresh install — start empty, user adds their own gear
   } catch(e) {
     console.warn('Supabase load failed, using local cache:', e.message);
     loadLocal();
     showSyncStatus('Offline — using local cache', 3000);
-    if (!gear.length && !lists.length) seedDefaults();
   }
 }
 
@@ -866,17 +860,7 @@ function showSyncStatus(msg, hideAfter = 0) {
   clearTimeout(syncStatusTimer);
   if (hideAfter) syncStatusTimer = setTimeout(() => { el.style.opacity = '0'; }, hideAfter);
 }
-function seedDefaults() {
-  gear = [
-    { id: uid(), name: 'Sony FX3', brand: 'Sony', model: 'FX3', category: 'video', qty: 1, serial: 'SN-001', notes: 'Full frame cinema camera' },
-    { id: uid(), name: 'Ronin RS3 Pro', brand: 'DJI', model: 'RS3 Pro', category: 'video', qty: 1, serial: '', notes: 'Gimbal stabilizer' },
-    { id: uid(), name: 'Sennheiser MKH 416', brand: 'Sennheiser', model: 'MKH 416', category: 'audio', qty: 2, serial: '', notes: 'Shotgun mic' },
-    { id: uid(), name: 'Zoom F6 Recorder', brand: 'Zoom', model: 'F6', category: 'audio', qty: 1, serial: '', notes: '6-track field recorder' },
-    { id: uid(), name: 'Samsung T7 2TB', brand: 'Samsung', model: 'T7', category: 'storage', qty: 3, serial: '', notes: 'NVMe portable SSD' },
-    { id: uid(), name: 'Aputure 600D Pro', brand: 'Aputure', model: '600D Pro', category: 'lighting', qty: 2, serial: '', notes: 'LED COB with Fresnel' },
-    { id: uid(), name: 'Anton Bauer Gold Mount', brand: 'Anton Bauer', model: 'Gold Mount', category: 'power', qty: 4, serial: '', notes: '190Wh V-Mount' },
-  ];
-}
+// seedDefaults removed — Supabase is source of truth
 
 // ── THEME ──
 function applyTheme(dark) {
