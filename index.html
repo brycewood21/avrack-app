@@ -378,6 +378,19 @@
   html.light .tab-add-fab { box-shadow: 0 3px 12px rgba(13,158,126,0.35); }
   .tab-add-fab svg { width: 24px; height: 24px; stroke: #0d0f14; stroke-width: 2.4; }
   .tab-btn.tab-add > span { color: var(--accent); }
+  /* Tab badge */
+  .tab-badge {
+    position: absolute; top: -5px; right: -8px;
+    background: var(--accent); color: #0d0f14;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 700;
+    min-width: 16px; height: 16px;
+    border-radius: 8px; padding: 0 4px;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .tab-badge.visible { opacity: 1; }
 
   /* ── GEAR PICKER SHEET (mobile pack lists) ── */
   .gear-sheet-overlay {
@@ -405,7 +418,20 @@
   @media (max-width: 700px) {
     /* Hide desktop chrome */
     .sidebar { display: none !important; }
-    .stats-bar { display: none; }
+    .stats-bar {
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-wrap: nowrap;
+      gap: 10px;
+      padding: 8px 12px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .stats-bar::-webkit-scrollbar { display: none; }
+    .stat-val { font-size: 16px; }
+    .stat-label { font-size: 9px; }
+    .stat-divider { width: 1px; flex-shrink: 0; }
     .theme-toggle span#themeLabel { display: none; }
     .header-actions .btn-ghost { display: none; }
 
@@ -673,12 +699,18 @@
   <div class="bottom-tabs-inner">
 
     <button class="tab-btn active" id="tab-all" onclick="mobileTab('all')">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <div style="position:relative;display:inline-flex;">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="tab-badge" id="badge-gear">0</span>
+      </div>
       <span>Inventory</span>
     </button>
 
     <button class="tab-btn" id="tab-lists" onclick="mobileTab('lists')">
-      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+      <div style="position:relative;display:inline-flex;">
+        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+        <span class="tab-badge" id="badge-lists">0</span>
+      </div>
       <span>Pack Lists</span>
     </button>
 
@@ -1325,10 +1357,29 @@ function selectList(id) {
 // ── STATS ──
 function renderStats() {
   const total = gear.length, totalQty = gear.reduce((s,g) => s+g.qty, 0);
-  document.getElementById('cnt-all').textContent = total;
-  document.getElementById('cnt-lists').textContent = lists.length;
-  CATS.forEach(c => { document.getElementById('cnt-'+c).textContent = gear.filter(g => g.category === c).length; });
+  // Sidebar counts (desktop)
+  const cntAll = document.getElementById('cnt-all');
+  const cntLists = document.getElementById('cnt-lists');
+  if (cntAll) cntAll.textContent = total;
+  if (cntLists) cntLists.textContent = lists.length;
+  CATS.forEach(c => {
+    const el = document.getElementById('cnt-'+c);
+    if (el) el.textContent = gear.filter(g => g.category === c).length;
+  });
+  // Mobile tab badges
+  const badgeGear = document.getElementById('badge-gear');
+  const badgeLists = document.getElementById('badge-lists');
+  if (badgeGear) {
+    badgeGear.textContent = total;
+    badgeGear.classList.toggle('visible', total > 0);
+  }
+  if (badgeLists) {
+    badgeLists.textContent = lists.length;
+    badgeLists.classList.toggle('visible', lists.length > 0);
+  }
+  // Stats bar (visible on all screen sizes now)
   const stats = document.getElementById('statsBar');
+  if (!stats) return;
   stats.innerHTML = `
     <div class="stat"><span class="stat-val">${total}</span><span class="stat-label">Items</span></div>
     <div class="stat-divider"></div>
@@ -1337,7 +1388,7 @@ function renderStats() {
     <div class="stat"><span class="stat-val">${lists.length}</span><span class="stat-label">Lists</span></div>
     <div class="stat-divider"></div>
     ${CATS.map(c =>
-      `<div class="stat"><span class="stat-val" style="color:var(--cat-${c})">${gear.filter(g=>g.category===c).length}</span><span class="stat-label">${CAT_LABELS[c]}</span></div>`
+      `<div class="stat" style="flex-shrink:0"><span class="stat-val" style="color:var(--cat-${c})">${gear.filter(g=>g.category===c).length}</span><span class="stat-label">${CAT_LABELS[c]}</span></div>`
     ).join('<div class="stat-divider"></div>')}`;
 }
 function renderAll() { renderStats(); renderView(); }
