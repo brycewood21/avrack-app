@@ -780,24 +780,26 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 
 // ── SUPABASE CONFIG ──
 const SUPA_URL = 'https://xrhtawmvmpybfrfnomoc.supabase.co';
-const SUPA_KEY = 'sb_publishable_7ykaL5GNUQfwtsoWU_RM1Q_PTt2kkAm';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyaHRhd212bXB5YmZyZm5vbW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODAwMDYsImV4cCI6MjA5OTQ1NjAwNn0.R5x1SomeUv6X6H0XtI99h42ECgVVJ_BfqOYrYqSLyc0';
 
 async function supaFetch(path, method = 'GET', body = null, extra = {}) {
-  const opts = {
-    method,
-    headers: {
-      'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + SUPA_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : '',
-      ...extra
-    }
+  const headers = {
+    'apikey': SUPA_KEY,
+    'Authorization': 'Bearer ' + SUPA_KEY,
+    'Content-Type': 'application/json',
+    ...extra
   };
+  // Use upsert for POST (insert or update by primary key)
+  if (method === 'POST') {
+    headers['Prefer'] = 'return=minimal,resolution=merge-duplicates';
+  }
+  const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(SUPA_URL + path, opts);
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(err);
+    console.error('Supabase error:', method, path, res.status, err);
+    throw new Error(`${res.status}: ${err}`);
   }
   const text = await res.text();
   return text ? JSON.parse(text) : null;
@@ -822,11 +824,14 @@ function loadLocal() {
 async function pushGear(item) {
   try {
     await supaFetch('/rest/v1/gear', 'POST', {
-      id: item.id, name: item.name, brand: item.brand, model: item.model,
-      category: item.category, qty: item.qty, serial: item.serial,
-      notes: item.notes, subitems: item.subitems || []
-    }, { 'Prefer': 'resolution=merge-duplicates' });
-  } catch(e) { console.warn('Supabase gear push failed:', e.message); }
+      id: item.id, name: item.name, brand: item.brand || '', model: item.model || '',
+      category: item.category || 'other', qty: item.qty || 1, serial: item.serial || '',
+      notes: item.notes || '', subitems: item.subitems || []
+    });
+  } catch(e) {
+    console.warn('Supabase gear push failed:', e.message);
+    showSyncStatus('Sync error — check connection', 3000);
+  }
 }
 
 // Delete a gear item from Supabase
@@ -840,9 +845,12 @@ async function deleteGearRemote(id) {
 async function pushList(list) {
   try {
     await supaFetch('/rest/v1/lists', 'POST', {
-      id: list.id, name: list.name, notes: list.notes, items: list.items || []
-    }, { 'Prefer': 'resolution=merge-duplicates' });
-  } catch(e) { console.warn('Supabase list push failed:', e.message); }
+      id: list.id, name: list.name, notes: list.notes || '', items: list.items || []
+    });
+  } catch(e) {
+    console.warn('Supabase list push failed:', e.message);
+    showSyncStatus('Sync error — check connection', 3000);
+  }
 }
 
 // Delete a list from Supabase
@@ -867,18 +875,22 @@ async function load() {
       supaFetch('/rest/v1/gear?select=*&order=created_at.asc'),
       supaFetch('/rest/v1/lists?select=*&order=created_at.asc')
     ]);
-    gear  = remoteGear  || [];
-    lists = remoteLists || [];
-    // Ensure subitems is always an array
-    gear.forEach(g => { if (!Array.isArray(g.subitems)) g.subitems = []; });
-    lists.forEach(l => { if (!Array.isArray(l.items))  l.items  = []; });
+    gear  = Array.isArray(remoteGear)  ? remoteGear  : [];
+    lists = Array.isArray(remoteLists) ? remoteLists : [];
+    // Ensure array fields are always arrays
+    gear.forEach(g => {
+      if (!Array.isArray(g.subitems)) g.subitems = [];
+    });
+    lists.forEach(l => {
+      if (!Array.isArray(l.items)) l.items = [];
+      l.items.forEach(i => { if (!i.subChecked) i.subChecked = {}; });
+    });
     saveLocal();
     showSyncStatus('Synced ✓', 2000);
-    // Fresh install — start empty, user adds their own gear
   } catch(e) {
-    console.warn('Supabase load failed, using local cache:', e.message);
+    console.error('Supabase load failed:', e.message);
     loadLocal();
-    showSyncStatus('Offline — using local cache', 3000);
+    showSyncStatus('Offline — local data only', 3000);
   }
 }
 
