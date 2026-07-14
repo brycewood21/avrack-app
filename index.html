@@ -1801,9 +1801,10 @@ document.getElementById('gi-name').addEventListener('keydown', e => { if (e.key 
 document.getElementById('pl-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveList(); });
 
 // ── INIT ──
-load();
 try { applyTheme(localStorage.getItem('avr_theme') !== 'light'); } catch(e) { applyTheme(true); }
+gear = []; lists = [];
 renderAll();
+load().then(() => renderAll());
 </script>
 </body>
 </html>
