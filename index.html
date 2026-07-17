@@ -48,7 +48,7 @@
   .theme-toggle:hover { color: var(--text); border-color: var(--text); }
 
   /* LAYOUT */
-  .app { display: flex; height: calc(100vh - 56px); }
+  .app { display: flex; height: calc(100vh - 56px); overflow: hidden; }
   .sidebar { width: 210px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
   .sidebar-section { padding: 16px 12px 8px; }
   .sidebar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 0 8px 8px; }
@@ -59,7 +59,7 @@
   .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
   .nav-item .count { margin-left: auto; font-size: 11px; background: var(--surface2); padding: 1px 7px; border-radius: 99px; color: var(--muted); }
   .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .main { flex: 1; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: hidden; min-width: 0; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 
   /* TOOLBAR */
   .toolbar { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--surface); }
@@ -96,7 +96,7 @@
   .stat-divider { width: 1px; background: var(--border); }
 
   /* CONTENT */
-  .content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; min-height: 0; -webkit-overflow-scrolling: touch; }
+  .content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; min-height: 0; height: 0; -webkit-overflow-scrolling: touch; }
 
   /* GEAR GRID */
   .gear-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
@@ -132,9 +132,9 @@
   .lists-split { display: flex; flex: 1; overflow: hidden; }
 
   /* LEFT PANEL — list selector + gear inventory */
-  .lists-left { display: flex; flex-direction: column; flex: 1; min-width: 0; border-right: 1px solid var(--border); overflow: hidden; }
+  .lists-left { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; border-right: 1px solid var(--border); overflow: hidden; }
   .lists-left-toolbar { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: var(--surface); }
-  .lists-left-content { flex: 1; overflow-y: auto; padding: 12px; }
+  .lists-left-content { flex: 1; overflow-y: auto; padding: 12px; min-height: 0; height: 0; -webkit-overflow-scrolling: touch; }
 
   /* Compact gear row for list builder */
   .gear-row {
@@ -153,7 +153,7 @@
   .gear-row:hover .drag-handle { color: var(--muted); }
 
   /* RIGHT PANEL — active list */
-  .lists-right { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); overflow: hidden; }
+  .lists-right { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); overflow: hidden; min-height: 0; }
   .lists-right-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
   .list-tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
   .list-tabs::-webkit-scrollbar { display: none; }
@@ -176,7 +176,7 @@
   .drop-zone {
     flex: 1; overflow-y: auto; padding: 10px;
     border: 2px dashed transparent; border-radius: 8px; margin: 8px; transition: all 0.2s;
-    min-height: 80px;
+    min-height: 0; height: 0; -webkit-overflow-scrolling: touch;
   }
   .drop-zone.drag-over {
     border-color: var(--accent);
@@ -453,10 +453,11 @@
     .bottom-tabs { display: flex; }
     /* Content side padding */
     .content {
-      padding-left:  max(10px, env(safe-area-inset-left, 0px));
-      padding-right: max(10px, env(safe-area-inset-right, 0px));
+      padding: 10px max(10px, env(safe-area-inset-right, 0px)) 10px max(10px, env(safe-area-inset-left, 0px));
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      height: 0;
+      min-height: 0;
     }
 
     /* Gear grid: single column */
@@ -1139,11 +1140,12 @@ function renderGearView() {
   const toolbar = document.getElementById('mainToolbar');
   toolbar.style.display = 'flex';
   // Reset any overrides set by renderListsView
-  mainContent.style.overflow   = '';
-  mainContent.style.display    = '';
+  mainContent.style.overflow      = '';
+  mainContent.style.overflowY     = '';
+  mainContent.style.display       = '';
   mainContent.style.flexDirection = '';
-  mainContent.style.height     = '';
-  mainContent.style.padding    = '';
+  mainContent.style.height        = '';
+  mainContent.style.padding       = '';
 
   const search = document.getElementById('searchInput').value.toLowerCase();
   const sort = document.getElementById('sortSelect').value;
@@ -1319,7 +1321,7 @@ function renderListsView() {
 
     // Sort items
     const listSortEl = document.getElementById('packListSort');
-    const packListSort = listSortEl ? listSortEl.value : 'added';
+    const packListSort = listSortEl ? listSortEl.value : 'name';
     let sortedItems = [...activeList.items];
     if (packListSort === 'category') {
       sortedItems.sort((a, b) => {
