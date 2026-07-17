@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="height:100%;overflow:hidden;">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -34,11 +34,7 @@
     --accent: #0d9e7e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-  /* Prevent Safari body bounce/scroll — all scrolling handled by inner containers */
-  @media (max-width: 700px) {
-    html, body { overflow: hidden; position: fixed; width: 100%; height: 100%; }
-  }
+  body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--text); height: 100%; overflow: hidden; }
 
   /* HEADER */
   header {
@@ -438,6 +434,105 @@
   @media (max-width: 700px) {
     /* Hide desktop chrome */
     .sidebar { display: none !important; }
+    .theme-toggle span#themeLabel { display: none; }
+    .header-actions .btn-ghost { display: none; }
+
+    /* Header compact */
+    header {
+      padding: 0 max(12px, env(safe-area-inset-left, 0px));
+      padding-right: max(12px, env(safe-area-inset-right, 0px));
+    }
+    .logo { font-size: 19px; }
+
+    /* App fills exactly between header and tab bar */
+    .app {
+      position: fixed;
+      top: 56px; left: 0; right: 0;
+      bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+      height: auto;
+      overflow: hidden;
+    }
+    .main { overflow: hidden; }
+
+    /* Scrollable content area — single unified rule */
+    .content {
+      padding: 10px max(10px, env(safe-area-inset-right, 0px)) 10px max(10px, env(safe-area-inset-left, 0px));
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      overscroll-behavior-y: contain;
+      height: 0;
+      min-height: 0;
+      -webkit-transform: translateZ(0);
+    }
+
+    /* Show bottom tabs */
+    .bottom-tabs { display: flex; }
+
+    /* Gear grid: single column */
+    .gear-grid { grid-template-columns: 1fr; gap: 8px; }
+
+    /* Touch-friendly cards */
+    .gear-card { cursor: default; }
+    .gear-card:active { transform: scale(0.98); }
+    .gear-card-body { padding: 12px 14px 10px; }
+    .icon-btn { padding: 8px; font-size: 16px; }
+    .gear-card-footer { padding: 8px 14px; }
+
+    /* Toolbar compact */
+    .toolbar { padding: 8px 10px; flex-wrap: nowrap; }
+    .toolbar-title { font-size: 15px; }
+    .search { width: 100%; }
+
+    /* Pack list view: full width, vertically scrollable */
+    .lists-split > div:last-child { flex-direction: column !important; }
+    .lists-left { display: none !important; }
+    .lists-right {
+      width: 100% !important;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .list-detail {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .drop-zone {
+      flex: 1 !important;
+      overflow-y: scroll !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+      overscroll-behavior-y: contain !important;
+      height: auto !important;
+      min-height: 0 !important;
+      margin: 4px !important;
+      -webkit-transform: translateZ(0);
+    }
+    .list-detail-header { flex-shrink: 0; }
+    .list-detail-footer { flex-shrink: 0; padding: 8px 12px; }
+    .list-footer-actions { flex-wrap: wrap; gap: 5px; }
+
+    /* List tabs */
+    .list-tabs { gap: 6px; }
+    .list-tab { padding: 7px 12px; font-size: 13px; }
+
+    /* Pack list items: larger touch targets */
+    .pack-list-item { padding: 11px 10px; }
+    .pack-checkbox { width: 20px; height: 20px; font-size: 11px; }
+
+    /* Gear rows in sheet */
+    .gear-row { padding: 12px 14px; }
+
+    /* Modals: slide up from bottom */
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal { border-radius: 18px 18px 0 0; max-height: 92vh; max-width: 100%; }
+
+    /* Stats bar: horizontal scroll */
     .stats-bar {
       display: flex;
       overflow-x: auto;
@@ -452,110 +547,18 @@
     .stat-val { font-size: 16px; }
     .stat-label { font-size: 9px; }
     .stat-divider { width: 1px; flex-shrink: 0; }
-    .theme-toggle span#themeLabel { display: none; }
-    .header-actions .btn-ghost { display: none; }
 
-    /* Header compact — safe area on sides */
-    header {
-      padding: 0 max(12px, env(safe-area-inset-left, 0px));
-      padding-right: max(12px, env(safe-area-inset-right, 0px));
-    }
-    .logo { font-size: 19px; }
-
-    /* Mobile layout: fixed header (56px) + fixed tab bar (~56px+safe area)
-       .app fills exactly the gap between them */
-    .app {
-      position: fixed;
-      top: 56px;
-      left: 0; right: 0;
-      bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-      height: auto;
-    }
-    .main { overflow: hidden; }
-
-    /* Show bottom tabs */
-    .bottom-tabs { display: flex; }
     /* Content side padding */
-    .content {
-      padding: 10px max(10px, env(safe-area-inset-right, 0px)) 10px max(10px, env(safe-area-inset-left, 0px));
-      overflow-y: scroll !important;
-      -webkit-overflow-scrolling: touch !important;
-      touch-action: pan-y !important;
-      overscroll-behavior: contain !important;
-      height: 0;
-      min-height: 0;
-      -webkit-transform: translateZ(0);
-      transform: translateZ(0);
+    .bottom-tabs-inner {
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
     }
 
-    /* Gear grid: single column */
-    .gear-grid { grid-template-columns: 1fr; gap: 8px; }
-    .content { padding: 10px; }
-
-    /* Touch-friendly cards */
-    .gear-card { cursor: default; }
-    .gear-card:active { transform: scale(0.98); }
-    .gear-card-body { padding: 12px 14px 10px; }
-    .icon-btn { padding: 8px; font-size: 16px; }
-    .gear-card-footer { padding: 8px 14px; }
-
-    /* Toolbar compact */
-    .toolbar { padding: 8px 10px; }
-    .toolbar-title { font-size: 15px; }
-    .search { width: 100%; }
-    .toolbar { flex-wrap: nowrap; }
-
-    /* Pack list view: full width single column */
-    .lists-split > div:last-child { flex-direction: column !important; }
-    .lists-left { display: none !important; }
-    .lists-right {
-      width: 100% !important; border: none;
-      display: flex; flex-direction: column;
-      overflow: hidden; min-height: 0;
-    }
-    .list-detail {
-      flex: 1; display: flex; flex-direction: column;
-      overflow: hidden; min-height: 0;
-    }
-    /* Drop zone: fill remaining space and scroll — Safari fix */
-    .drop-zone {
-      flex: 1 !important;
-      overflow-y: scroll !important;  /* 'scroll' more reliable than 'auto' in Safari */
-      -webkit-overflow-scrolling: touch !important;
-      touch-action: pan-y !important;
-      overscroll-behavior: contain !important;
-      height: auto !important;
-      min-height: 0 !important;
-      margin: 4px !important;
-      /* Force Safari to create a new stacking context for scroll */
-      -webkit-transform: translateZ(0);
-      transform: translateZ(0);
-    }
-    .list-detail-footer { flex-shrink: 0; padding: 8px 12px; }
-    .list-footer-actions { flex-wrap: wrap; gap: 5px; }
-
-    /* List tabs scrollable */
-    .list-tabs { gap: 6px; }
-    .list-tab { padding: 7px 12px; font-size: 13px; }
-
-    /* Pack list items larger touch targets */
-    .pack-list-item { padding: 11px 10px; }
-    .pack-checkbox { width: 20px; height: 20px; font-size: 11px; }
-
-    /* Gear rows in sheet */
-    .gear-row { padding: 12px 14px; }
-
-    /* Modals full-screen on mobile */
-    .modal-overlay { padding: 0; align-items: flex-end; }
-    .modal { border-radius: 18px 18px 0 0; max-height: 92vh; max-width: 100%; }
-
-    /* FAB — mobile add gear inside tabs, no floating */
+    /* Mobile-only elements */
+    .mobile-only { display: flex !important; }
     .fab { display: none; }
 
-    /* Show mobile-only elements */
-    .mobile-only { display: flex !important; }
-
-    /* Pack list empty drop zone message */
+    /* Drop zone hint text */
     .drop-zone-hint::before { content: 'Tap + Add Gear below to add items'; }
     .drop-zone-empty > div:not(.dz-icon):not(:last-child) { display: none; }
   }
