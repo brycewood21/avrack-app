@@ -1329,14 +1329,13 @@ function renderListsView() {
         const catB = gb ? CATS.indexOf(gb.category) : 99;
         return catA !== catB ? catA - catB : (ga?.name||'').localeCompare(gb?.name||'');
       });
-    } else if (packListSort === 'name') {
+    } else {
+      // Default: A–Z by name
       sortedItems.sort((a, b) => {
         const ga = gear.find(x => x.id === a.gearId);
         const gb = gear.find(x => x.id === b.gearId);
         return (ga?.name||'').localeCompare(gb?.name||'');
       });
-    } else if (packListSort === 'unchecked') {
-      sortedItems.sort((a, b) => (a.checked ? 1 : 0) - (b.checked ? 1 : 0));
     }
 
     // Build HTML — with category headers when sorted by category
@@ -1432,10 +1431,8 @@ function buildSplitHTML(tabsHTML, activeList, gearRowsHTML, dropContent, footerH
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <div class="list-detail-name" style="flex:1">${esc(activeList ? activeList.name : '')}</div>
             <select id="packListSort" class="form-input" style="padding:3px 6px;font-size:11px;height:auto;width:auto" onchange="renderListsViewKeepScroll()">
-              <option value="added">Order Added</option>
               <option value="name">A–Z</option>
               <option value="category">Category</option>
-              <option value="unchecked">Unpacked First</option>
             </select>
           </div>
           ${activeList && activeList.notes ? `<div class="list-detail-meta">${esc(activeList.notes)}</div>` : ''}
@@ -1903,6 +1900,19 @@ function toggleMobileSidebar() {
 
 document.getElementById('gi-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveGear(); });
 document.getElementById('pl-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveList(); });
+
+// ── MISC ──
+function syncTabBarHeight() {
+  const tabs = document.getElementById('bottomTabs');
+  if (!tabs || getComputedStyle(tabs).display === 'none') return;
+  const h = tabs.getBoundingClientRect().height;
+  if (h > 0) {
+    const main = document.querySelector('.main');
+    if (main) main.style.paddingBottom = (h + 8) + 'px';
+  }
+}
+window.addEventListener('resize', syncTabBarHeight);
+window.addEventListener('orientationchange', () => setTimeout(syncTabBarHeight, 300));
 
 // ── INIT ──
 try { applyTheme(localStorage.getItem('avr_theme') !== 'light'); } catch(e) { applyTheme(true); }
