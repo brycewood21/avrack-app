@@ -442,12 +442,16 @@
     }
     .logo { font-size: 19px; }
 
-    /* Main fills viewport; content clears the tab bar + safe area */
-    .app { height: calc(100vh - 56px); }
-    .main {
-      /* 56px tab bar + safe area + 8px breathing room */
-      padding-bottom: calc(56px + env(safe-area-inset-bottom, 16px) + 8px);
+    /* Mobile layout: fixed header (56px) + fixed tab bar (~56px+safe area)
+       .app fills exactly the gap between them */
+    .app {
+      position: fixed;
+      top: 56px;
+      left: 0; right: 0;
+      bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+      height: auto;
     }
+    .main { overflow: hidden; }
 
     /* Show bottom tabs */
     .bottom-tabs { display: flex; }
@@ -480,10 +484,25 @@
     /* Pack list view: full width single column */
     .lists-split > div:last-child { flex-direction: column !important; }
     .lists-left { display: none !important; }
-    .lists-right { width: 100% !important; border: none; min-height: 0; }
-    .list-detail { min-height: 0; }
-    .drop-zone { margin: 4px; min-height: 0; height: 0; }
-    .list-detail-footer { padding: 8px 12px; flex-shrink: 0; }
+    .lists-right {
+      width: 100% !important; border: none;
+      display: flex; flex-direction: column;
+      overflow: hidden; min-height: 0;
+    }
+    .list-detail {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; min-height: 0;
+    }
+    /* Drop zone: fill remaining space and scroll */
+    .drop-zone {
+      flex: 1 !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      height: auto !important;
+      min-height: 0 !important;
+      margin: 4px !important;
+    }
+    .list-detail-footer { flex-shrink: 0; padding: 8px 12px; }
     .list-footer-actions { flex-wrap: wrap; gap: 5px; }
 
     /* List tabs scrollable */
@@ -1146,7 +1165,9 @@ function renderGearView() {
   mainContent.style.overflowY     = '';
   mainContent.style.display       = '';
   mainContent.style.flexDirection = '';
+  mainContent.style.flex          = '';
   mainContent.style.height        = '';
+  mainContent.style.minHeight     = '';
   mainContent.style.padding       = '';
 
   const search = document.getElementById('searchInput').value.toLowerCase();
@@ -1225,9 +1246,8 @@ function renderListsView() {
   mainContent.style.overflow = 'hidden';
   mainContent.style.display = 'flex';
   mainContent.style.flexDirection = 'column';
-  mainContent.style.height = '100%';
+  mainContent.style.flex = '1';
   mainContent.style.minHeight = '0';
-  mainContent.style.overflowY = 'hidden';
 
   if (!lists.length) {
     mainContent.innerHTML = `<div class="empty" style="padding-top:80px"><div class="empty-icon">🗒️</div><h3>No pack lists yet</h3><p>Create a list and then drag gear into it</p><br><br><button class="btn btn-primary" onclick="openModal('newList')">+ New List</button></div>`;
