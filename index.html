@@ -1261,8 +1261,9 @@ function renderListsViewKeepScroll() {
 
   renderListsView();
 
-  // Restore scroll positions after DOM rebuild
+  // Restore scroll positions and fix Safari scroll after DOM rebuild
   requestAnimationFrame(() => {
+    fixDropZoneScroll();
     const lp = document.querySelector('.lists-left-content');
     const rp = document.getElementById('dropZoneInner');
     if (lp) lp.scrollTop = leftScroll;
@@ -1459,6 +1460,35 @@ function renderListsView() {
     dz.addEventListener('dragover', onDropZoneDragOver);
     dz.addEventListener('dragleave', onDropZoneDragLeave);
     dz.addEventListener('drop', onDropZoneDrop);
+  }
+
+  // Safari scroll fix: explicitly calculate and set drop zone height
+  // This bypasses Safari's refusal to scroll inside overflow:hidden flex chains
+  requestAnimationFrame(() => {
+    fixDropZoneScroll();
+  });
+}
+
+function fixDropZoneScroll() {
+  const dz = document.getElementById('dropZoneInner');
+  if (!dz) return;
+  const right = dz.closest('.lists-right');
+  if (!right) return;
+
+  const header = right.querySelector('.list-detail-header');
+  const footer = right.querySelector('.list-detail-footer');
+  const rightH = right.getBoundingClientRect().height;
+  const headerH = header ? header.getBoundingClientRect().height : 0;
+  const footerH = footer ? footer.getBoundingClientRect().height : 0;
+  const tabsH = 44; // approx tabs row height
+  const available = rightH - headerH - footerH - tabsH;
+
+  if (available > 50) {
+    dz.style.height = available + 'px';
+    dz.style.maxHeight = available + 'px';
+    dz.style.overflowY = 'scroll';
+    dz.style.webkitOverflowScrolling = 'touch';
+    dz.style.flex = 'none';
   }
 }
 
@@ -1968,8 +1998,8 @@ function syncTabBarHeight() {
     if (main) main.style.paddingBottom = (h + 8) + 'px';
   }
 }
-window.addEventListener('resize', syncTabBarHeight);
-window.addEventListener('orientationchange', () => setTimeout(syncTabBarHeight, 300));
+window.addEventListener('resize', () => { syncTabBarHeight(); fixDropZoneScroll(); });
+window.addEventListener('orientationchange', () => setTimeout(() => { syncTabBarHeight(); fixDropZoneScroll(); }, 300));
 
 // ── INIT ──
 try { applyTheme(localStorage.getItem('avr_theme') !== 'light'); } catch(e) { applyTheme(true); }
