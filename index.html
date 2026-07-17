@@ -1034,7 +1034,7 @@ function deleteList(id) {
 function toggleCheck(listId, gearId) {
   const l = lists.find(x => x.id === listId); if (!l) return;
   const i = l.items.find(x => x.gearId === gearId); if (i) i.checked = !i.checked;
-  save(null, l); renderListsView();
+  save(null, l); renderListsViewKeepScroll();
 }
 function toggleSubList(gearId) {
   const toggle = document.getElementById('st-' + gearId);
@@ -1048,13 +1048,13 @@ function toggleSubCheck(listId, gearId, subId) {
   const li = l.items.find(x => x.gearId === gearId); if (!li) return;
   if (!li.subChecked) li.subChecked = {};
   li.subChecked[subId] = !li.subChecked[subId];
-  save(null, l); renderListsView();
+  save(null, l); renderListsViewKeepScroll();
 }
 
 function removeFromList(listId, gearId) {
   const l = lists.find(x => x.id === listId); if (!l) return;
   l.items = l.items.filter(x => x.gearId !== gearId);
-  save(null, l); renderListsView();
+  save(null, l); renderListsViewKeepScroll();
 }
 function addGearToActiveList(gearId) {
   if (!activeListId) { showToast('Select or create a pack list first', 'error'); return; }
@@ -1063,7 +1063,7 @@ function addGearToActiveList(gearId) {
   if (!l || !g) return;
   if (l.items.find(i => i.gearId === gearId)) { showToast('Already in this list'); return; }
   l.items.push({ gearId, qty: g.qty, checked: false });
-  save(null, l); renderListsView();
+  save(null, l); renderListsViewKeepScroll();
 }
 
 // ── PROMPT ADD (mobile fallback) ──
@@ -1195,6 +1195,24 @@ function gearCardHTML(g) {
 }
 
 // ── PACK LISTS VIEW (split panel) ──
+function renderListsViewKeepScroll() {
+  // Capture scroll positions of both panels before re-render
+  const leftPanel  = document.querySelector('.lists-left-content');
+  const rightPanel = document.getElementById('dropZoneInner');
+  const leftScroll  = leftPanel  ? leftPanel.scrollTop  : 0;
+  const rightScroll = rightPanel ? rightPanel.scrollTop : 0;
+
+  renderListsView();
+
+  // Restore scroll positions after DOM rebuild
+  requestAnimationFrame(() => {
+    const lp = document.querySelector('.lists-left-content');
+    const rp = document.getElementById('dropZoneInner');
+    if (lp) lp.scrollTop = leftScroll;
+    if (rp) rp.scrollTop = rightScroll;
+  });
+}
+
 function renderListsView() {
   const mainContent = document.getElementById('mainContent');
   const toolbar = document.getElementById('mainToolbar');
