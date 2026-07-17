@@ -1239,20 +1239,35 @@ function renderListsView() {
   // Filter gear items not in active list for visual state
   const inListIds = new Set((activeList ? activeList.items.map(i => i.gearId) : []));
 
-  // Build gear rows for left panel
+  // Build gear rows for left panel — respect sort selection
   let gearItems = [...gear];
-  gearItems.sort((a,b) => a.name.localeCompare(b.name));
+  const listPanelSortEl = document.getElementById('listPanelSort');
+  const listPanelSort = listPanelSortEl ? listPanelSortEl.value : 'name';
+  if (listPanelSort === 'category') {
+    gearItems.sort((a,b) => CATS.indexOf(a.category) - CATS.indexOf(b.category) || a.name.localeCompare(b.name));
+  } else {
+    gearItems.sort((a,b) => a.name.localeCompare(b.name));
+  }
 
-  const gearRowsHTML = gearItems.map(g => {
+  let gearRowsHTML = '';
+  let lastCat = null;
+  gearItems.forEach(g => {
     const inList = inListIds.has(g.id);
-    return `<div class="gear-row ${inList ? 'in-list' : ''}" data-gear-id="${g.id}" draggable="true" onclick="addGearToActiveList('${g.id}')" title="${inList ? 'Already in this list' : 'Click or drag to add to list'}">
+    // Insert category header when sorted by category
+    if (listPanelSort === 'category' && g.category !== lastCat) {
+      lastCat = g.category;
+      gearRowsHTML += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--cat-${g.category});padding:8px 4px 3px;display:flex;align-items:center;gap:5px;">
+        <span>${CAT_ICONS[g.category]}</span><span>${CAT_LABELS[g.category]}</span>
+      </div>`;
+    }
+    gearRowsHTML += `<div class="gear-row ${inList ? 'in-list' : ''}" data-gear-id="${g.id}" draggable="true" onclick="addGearToActiveList('${g.id}')" title="${inList ? 'Already in this list' : 'Click or drag to add to list'}">
       <span class="drag-handle" title="Drag to list">⠿</span>
       <span class="cat-dot dot-${g.category}" style="flex-shrink:0"></span>
       <span class="gear-row-name">${esc(g.name)}</span>
       <span class="gear-row-brand">${esc(g.brand)}</span>
       ${inList ? '<span style="color:var(--accent);font-size:11px;flex-shrink:0">✓ Added</span>' : '<span style="color:var(--muted);font-size:18px;flex-shrink:0">+</span>'}
     </div>`;
-  }).join('');
+  });
 
   // Build list tabs
   const tabsHTML = lists.map(l => `
@@ -1360,7 +1375,10 @@ function buildSplitHTML(tabsHTML, activeList, gearRowsHTML, dropContent, footerH
       <div class="lists-left">
         <div class="lists-left-toolbar">
           <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Inventory</span>
-          <span style="font-size:11px;color:var(--muted);margin-left:auto">Click or drag →</span>
+          <select id="listPanelSort" class="form-input" style="margin-left:auto;padding:3px 6px;font-size:11px;height:auto;width:auto" onchange="renderListsViewKeepScroll()">
+            <option value="name">A–Z</option>
+            <option value="category">Category</option>
+          </select>
         </div>
         <div class="lists-left-content">${gearRowsHTML || '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No gear yet.<br><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="openModal(\'addGear\')">+ Add Gear</button></div>'}</div>
       </div>
@@ -1783,15 +1801,30 @@ function renderGearSheet() {
   const l = lists.find(x => x.id === activeListId);
   const inListIds = new Set(l ? l.items.map(i => i.gearId) : []);
   const search = document.getElementById('gearSheetSearch').value.toLowerCase();
-  const filtered = gear.filter(g => !search || g.name.toLowerCase().includes(search) || (g.brand||'').toLowerCase().includes(search));
+  const listSort = document.getElementById('listPanelSort');
+  const sheetSort = listSort ? listSort.value : 'name';
+  let filtered = gear.filter(g => !search || g.name.toLowerCase().includes(search) || (g.brand||'').toLowerCase().includes(search));
+  if (sheetSort === 'category') {
+    filtered.sort((a,b) => CATS.indexOf(a.category) - CATS.indexOf(b.category) || a.name.localeCompare(b.name));
+  } else {
+    filtered.sort((a,b) => a.name.localeCompare(b.name));
+  }
   const list = document.getElementById('gearSheetList');
   if (!filtered.length) {
     list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px">No gear found</div>';
     return;
   }
-  list.innerHTML = filtered.map(g => {
+  let sheetHTML = '';
+  let sheetLastCat = null;
+  filtered.forEach(g => {
     const inList = inListIds.has(g.id);
-    return `<div class="gear-row ${inList?'in-list':''}" style="margin-bottom:6px" onclick="${inList ? '' : `addGearToActiveList('${g.id}');renderGearSheet();`}">
+    if (sheetSort === 'category' && g.category !== sheetLastCat) {
+      sheetLastCat = g.category;
+      sheetHTML += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--cat-${g.category});padding:8px 4px 3px;display:flex;align-items:center;gap:5px;">
+        <span>${CAT_ICONS[g.category]}</span><span>${CAT_LABELS[g.category]}</span>
+      </div>`;
+    }
+    sheetHTML += `<div class="gear-row ${inList?'in-list':''}" style="margin-bottom:6px" onclick="${inList ? '' : `addGearToActiveList('${g.id}');renderGearSheet();`}">
       <span class="cat-dot dot-${g.category}" style="flex-shrink:0"></span>
       <span class="gear-row-name">${esc(g.name)}</span>
       <span class="gear-row-brand">${esc(g.brand)}</span>
@@ -1799,7 +1832,8 @@ function renderGearSheet() {
         ? '<span style="color:var(--accent);font-size:11px;font-weight:600;flex-shrink:0">✓ Added</span>'
         : '<span style="color:var(--accent);font-size:20px;flex-shrink:0;font-weight:300">+</span>'}
     </div>`;
-  }).join('');
+  });
+  list.innerHTML = sheetHTML;
 }
 
 // Patch renderListsView to add a mobile "Add Gear" button in the list footer
