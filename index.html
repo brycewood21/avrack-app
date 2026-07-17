@@ -1279,7 +1279,6 @@ function renderListsView() {
   if (activeList && activeList.items.length) {
     const total = activeList.items.length;
     const checked = activeList.items.filter(i => i.checked).length;
-    // Count sub-items for secondary progress display
     let totalSubs = 0, checkedSubs = 0;
     activeList.items.forEach(li => {
       const g = gear.find(x => x.id === li.gearId);
@@ -1288,35 +1287,80 @@ function renderListsView() {
       if (li.subChecked) checkedSubs += subs.filter(si => !!li.subChecked[si.id]).length;
     });
     const pct = total ? Math.round(checked/total*100) : 0;
-    listItemsHTML = activeList.items.map(li => {
+
+    // Helper: render a single list item row
+    function renderListItem(li) {
       const g = gear.find(x => x.id === li.gearId);
       if (!g) return '';
       const subs = g.subitems || [];
-      // sub-item checked state stored on li.subChecked = {id: bool}
       if (!li.subChecked) li.subChecked = {};
       const subRows = subs.map(si => {
-        const checked = !!li.subChecked[si.id];
+        const chk = !!li.subChecked[si.id];
         return `<div class="sub-list-row">
-          <div class="pack-checkbox ${checked?'checked':''}" onclick="toggleSubCheck('${activeList.id}','${g.id}','${si.id}')">${checked?'✓':''}</div>
-          <span class="sub-list-name ${checked?'checked':''}">${esc(si.text)}</span>
+          <div class="pack-checkbox ${chk?'checked':''}" onclick="toggleSubCheck('${activeList.id}','${g.id}','${si.id}')">${chk?'✓':''}</div>
+          <span class="sub-list-name ${chk?'checked':''}">${esc(si.text)}</span>
         </div>`;
       }).join('');
       const subCheckedCount = subs.filter(si => !!li.subChecked[si.id]).length;
       const hasSubList = subs.length > 0;
-      const subBadge = hasSubList ? `<span class="sub-list-badge">${subCheckedCount}/${subs.length}</span>` : '';
-      const subToggle = hasSubList ? `<button class="sub-list-toggle" id="st-${g.id}" onclick="toggleSubList('${g.id}')"><span class="arrow">▶</span> ${subs.length} sub-item${subs.length!==1?'s':''}</button>` : '';
-      const subBody = hasSubList ? `<div class="sub-list-body" id="sb-${g.id}">${subRows}</div>` : '';
+      const subBadge   = hasSubList ? `<span class="sub-list-badge">${subCheckedCount}/${subs.length}</span>` : '';
+      const subToggle  = hasSubList ? `<button class="sub-list-toggle" id="st-${g.id}" onclick="toggleSubList('${g.id}')"><span class="arrow">▶</span> ${subs.length} sub-item${subs.length!==1?'s':''}</button>` : '';
+      const subBody    = hasSubList ? `<div class="sub-list-body" id="sb-${g.id}">${subRows}</div>` : '';
       return `<div class="pack-list-item" style="flex-wrap:wrap;">
         <div class="pack-checkbox ${li.checked?'checked':''}" onclick="toggleCheck('${activeList.id}','${g.id}')">${li.checked?'✓':''}</div>
         <span class="cat-dot dot-${g.category}" style="width:8px;height:8px;flex-shrink:0"></span>
         <span class="pack-item-name ${li.checked?'checked':''}">${esc(g.name)}</span>
-        ${subBadge}
-        ${subToggle}
+        ${subBadge}${subToggle}
         <span class="pack-item-qty">×${li.qty}</span>
         <button class="remove-item" onclick="removeFromList('${activeList.id}','${g.id}')" title="Remove">✕</button>
         ${subBody}
       </div>`;
-    }).join('');
+    }
+
+    // Sort items
+    const listSortEl = document.getElementById('packListSort');
+    const packListSort = listSortEl ? listSortEl.value : 'added';
+    let sortedItems = [...activeList.items];
+    if (packListSort === 'category') {
+      sortedItems.sort((a, b) => {
+        const ga = gear.find(x => x.id === a.gearId);
+        const gb = gear.find(x => x.id === b.gearId);
+        const catA = ga ? CATS.indexOf(ga.category) : 99;
+        const catB = gb ? CATS.indexOf(gb.category) : 99;
+        return catA !== catB ? catA - catB : (ga?.name||'').localeCompare(gb?.name||'');
+      });
+    } else if (packListSort === 'name') {
+      sortedItems.sort((a, b) => {
+        const ga = gear.find(x => x.id === a.gearId);
+        const gb = gear.find(x => x.id === b.gearId);
+        return (ga?.name||'').localeCompare(gb?.name||'');
+      });
+    } else if (packListSort === 'unchecked') {
+      sortedItems.sort((a, b) => (a.checked ? 1 : 0) - (b.checked ? 1 : 0));
+    }
+
+    // Build HTML — with category headers when sorted by category
+    if (packListSort === 'category') {
+      let lastCat = null;
+      listItemsHTML = sortedItems.map(li => {
+        const g = gear.find(x => x.id === li.gearId);
+        let header = '';
+        if (g && g.category !== lastCat) {
+          lastCat = g.category;
+          const catCount = sortedItems.filter(x => {
+            const gx = gear.find(y => y.id === x.gearId);
+            return gx && gx.category === g.category;
+          }).length;
+          header = `<div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--cat-${g.category});padding:10px 4px 3px;display:flex;align-items:center;gap:5px;">
+            <span>${CAT_ICONS[g.category]}</span><span>${CAT_LABELS[g.category]}</span>
+            <span style="color:var(--muted);font-weight:400">(${catCount})</span>
+          </div>`;
+        }
+        return header + renderListItem(li);
+      }).join('');
+    } else {
+      listItemsHTML = sortedItems.map(renderListItem).join('');
+    }
 
     const footerProgress = `<div class="list-detail-footer">
       <div class="progress-ring"><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${pct}%"></div></div><span>${checked}/${total} items · ${pct}%${totalSubs > 0 ? ' · ' + checkedSubs + '/' + totalSubs + ' sub-items' : ''}</span></div>
@@ -1385,7 +1429,15 @@ function buildSplitHTML(tabsHTML, activeList, gearRowsHTML, dropContent, footerH
       <!-- RIGHT: active list -->
       <div class="lists-right">
         <div class="list-detail-header">
-          <div class="list-detail-name">${esc(activeList ? activeList.name : '')}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="list-detail-name" style="flex:1">${esc(activeList ? activeList.name : '')}</div>
+            <select id="packListSort" class="form-input" style="padding:3px 6px;font-size:11px;height:auto;width:auto" onchange="renderListsViewKeepScroll()">
+              <option value="added">Order Added</option>
+              <option value="name">A–Z</option>
+              <option value="category">Category</option>
+              <option value="unchecked">Unpacked First</option>
+            </select>
+          </div>
           ${activeList && activeList.notes ? `<div class="list-detail-meta">${esc(activeList.notes)}</div>` : ''}
         </div>
         <div class="list-detail" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
