@@ -129,7 +129,7 @@
   .drag-hint { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
 
   /* ── PACK LIST SPLIT VIEW ── */
-  .lists-split { display: flex; flex: 1; overflow: hidden; }
+  .lists-split { display: flex; flex: 1; overflow: hidden; min-height: 0; flex-direction: column; }
 
   /* LEFT PANEL — list selector + gear inventory */
   .lists-left { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; border-right: 1px solid var(--border); overflow: hidden; }
@@ -480,8 +480,10 @@
     /* Pack list view: full width single column */
     .lists-split > div:last-child { flex-direction: column !important; }
     .lists-left { display: none !important; }
-    .lists-right { width: 100% !important; border: none; }
-    .list-detail-footer { padding: 8px 12px; }
+    .lists-right { width: 100% !important; border: none; min-height: 0; }
+    .list-detail { min-height: 0; }
+    .drop-zone { margin: 4px; min-height: 0; height: 0; }
+    .list-detail-footer { padding: 8px 12px; flex-shrink: 0; }
     .list-footer-actions { flex-wrap: wrap; gap: 5px; }
 
     /* List tabs scrollable */
@@ -1224,6 +1226,7 @@ function renderListsView() {
   mainContent.style.display = 'flex';
   mainContent.style.flexDirection = 'column';
   mainContent.style.height = '100%';
+  mainContent.style.minHeight = '0';
   mainContent.style.overflowY = 'hidden';
 
   if (!lists.length) {
@@ -1408,14 +1411,14 @@ function renderListsView() {
 }
 
 function buildSplitHTML(tabsHTML, activeList, gearRowsHTML, dropContent, footerHTML) {
-  return `<div class="lists-split" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+  return `<div class="lists-split" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
     <!-- Tabs row -->
     <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
       <div class="list-tabs" style="flex:1">${tabsHTML}</div>
       <button class="btn btn-accent-ghost btn-sm" onclick="openModal('newList')">+ New List</button>
     </div>
     <!-- Split body -->
-    <div style="display:flex;flex:1;overflow:hidden;">
+    <div style="display:flex;flex:1;overflow:hidden;min-height:0;">
       <!-- LEFT: gear inventory -->
       <div class="lists-left">
         <div class="lists-left-toolbar">
@@ -1439,7 +1442,7 @@ function buildSplitHTML(tabsHTML, activeList, gearRowsHTML, dropContent, footerH
           </div>
           ${activeList && activeList.notes ? `<div class="list-detail-meta">${esc(activeList.notes)}</div>` : ''}
         </div>
-        <div class="list-detail" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="list-detail" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
           ${dropContent}
         </div>
         ${footerHTML}
